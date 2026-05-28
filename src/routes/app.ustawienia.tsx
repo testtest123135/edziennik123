@@ -86,7 +86,7 @@ function SettingsPage() {
             <div className="flex items-center gap-3"><Switch checked={settings.ai_vision_enabled ?? true} onCheckedChange={(v) => updateSettings.mutate({ ai_vision_enabled: v })} /><Label>Vision (analiza obrazu)</Label></div>
           </div>
           {settings.ai_provider === "groq" && (
-            <p className="text-xs text-warning mt-3">⚠ Aby Groq działało, dodaj sekret GROQ_API_KEY w Connectors → Secrets (poproś asystenta o jego dodanie).</p>
+            <p className="text-xs text-muted-foreground mt-3">Klucz API jest pobierany z sekretu <code>AI</code> w Lovable Cloud. Polecane modele Vision: <code>meta-llama/llama-4-scout-17b-16e-instruct</code>, <code>meta-llama/llama-4-maverick-17b-128e-instruct</code>.</p>
           )}
 
           <div className="border-t pt-4 mt-4">

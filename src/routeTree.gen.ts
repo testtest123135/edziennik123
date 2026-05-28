@@ -13,6 +13,12 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppZachowanieRouteImport } from './routes/app.zachowanie'
+import { Route as AppUstawieniaRouteImport } from './routes/app.ustawienia'
+import { Route as AppUczniowieRouteImport } from './routes/app.uczniowie'
+import { Route as AppOcenyRouteImport } from './routes/app.oceny'
+import { Route as AppFrekwencjaRouteImport } from './routes/app.frekwencja'
+import { Route as AppAiRouteImport } from './routes/app.ai'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,16 +40,58 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppZachowanieRoute = AppZachowanieRouteImport.update({
+  id: '/zachowanie',
+  path: '/zachowanie',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUstawieniaRoute = AppUstawieniaRouteImport.update({
+  id: '/ustawienia',
+  path: '/ustawienia',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUczniowieRoute = AppUczniowieRouteImport.update({
+  id: '/uczniowie',
+  path: '/uczniowie',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOcenyRoute = AppOcenyRouteImport.update({
+  id: '/oceny',
+  path: '/oceny',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFrekwencjaRoute = AppFrekwencjaRouteImport.update({
+  id: '/frekwencja',
+  path: '/frekwencja',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiRoute = AppAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/ai': typeof AppAiRoute
+  '/app/frekwencja': typeof AppFrekwencjaRoute
+  '/app/oceny': typeof AppOcenyRoute
+  '/app/uczniowie': typeof AppUczniowieRoute
+  '/app/ustawienia': typeof AppUstawieniaRoute
+  '/app/zachowanie': typeof AppZachowanieRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/app/ai': typeof AppAiRoute
+  '/app/frekwencja': typeof AppFrekwencjaRoute
+  '/app/oceny': typeof AppOcenyRoute
+  '/app/uczniowie': typeof AppUczniowieRoute
+  '/app/ustawienia': typeof AppUstawieniaRoute
+  '/app/zachowanie': typeof AppZachowanieRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -51,14 +99,50 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/ai': typeof AppAiRoute
+  '/app/frekwencja': typeof AppFrekwencjaRoute
+  '/app/oceny': typeof AppOcenyRoute
+  '/app/uczniowie': typeof AppUczniowieRoute
+  '/app/ustawienia': typeof AppUstawieniaRoute
+  '/app/zachowanie': typeof AppZachowanieRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/ai'
+    | '/app/frekwencja'
+    | '/app/oceny'
+    | '/app/uczniowie'
+    | '/app/ustawienia'
+    | '/app/zachowanie'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/app'
-  id: '__root__' | '/' | '/app' | '/login' | '/app/'
+  to:
+    | '/'
+    | '/login'
+    | '/app/ai'
+    | '/app/frekwencja'
+    | '/app/oceny'
+    | '/app/uczniowie'
+    | '/app/ustawienia'
+    | '/app/zachowanie'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/ai'
+    | '/app/frekwencja'
+    | '/app/oceny'
+    | '/app/uczniowie'
+    | '/app/ustawienia'
+    | '/app/zachowanie'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -97,14 +181,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/zachowanie': {
+      id: '/app/zachowanie'
+      path: '/zachowanie'
+      fullPath: '/app/zachowanie'
+      preLoaderRoute: typeof AppZachowanieRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ustawienia': {
+      id: '/app/ustawienia'
+      path: '/ustawienia'
+      fullPath: '/app/ustawienia'
+      preLoaderRoute: typeof AppUstawieniaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/uczniowie': {
+      id: '/app/uczniowie'
+      path: '/uczniowie'
+      fullPath: '/app/uczniowie'
+      preLoaderRoute: typeof AppUczniowieRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/oceny': {
+      id: '/app/oceny'
+      path: '/oceny'
+      fullPath: '/app/oceny'
+      preLoaderRoute: typeof AppOcenyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/frekwencja': {
+      id: '/app/frekwencja'
+      path: '/frekwencja'
+      fullPath: '/app/frekwencja'
+      preLoaderRoute: typeof AppFrekwencjaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ai': {
+      id: '/app/ai'
+      path: '/ai'
+      fullPath: '/app/ai'
+      preLoaderRoute: typeof AppAiRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAiRoute: typeof AppAiRoute
+  AppFrekwencjaRoute: typeof AppFrekwencjaRoute
+  AppOcenyRoute: typeof AppOcenyRoute
+  AppUczniowieRoute: typeof AppUczniowieRoute
+  AppUstawieniaRoute: typeof AppUstawieniaRoute
+  AppZachowanieRoute: typeof AppZachowanieRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAiRoute: AppAiRoute,
+  AppFrekwencjaRoute: AppFrekwencjaRoute,
+  AppOcenyRoute: AppOcenyRoute,
+  AppUczniowieRoute: AppUczniowieRoute,
+  AppUstawieniaRoute: AppUstawieniaRoute,
+  AppZachowanieRoute: AppZachowanieRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

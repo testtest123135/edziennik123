@@ -35,7 +35,17 @@ export const ATTENDANCE_STATUSES = [
   { value: "dzien_wolny", label: "Dzień wolny", color: "bg-secondary text-secondary-foreground" },
 ] as const;
 
-export const PUNISHMENT_TYPES = [
+type PunishmentType = {
+  value: string;
+  label: string;
+  needsExpiry?: boolean;
+  needsPayment?: boolean;
+  needsDegree?: boolean;
+  needsWork?: boolean;
+  needsHours?: boolean;
+};
+
+export const PUNISHMENT_TYPES: readonly PunishmentType[] = [
   { value: "pouczenie", label: "1. Pouczenie słowne", needsExpiry: true },
   { value: "ostrzezenie_slowne", label: "2. Ostrzeżenie słowne", needsExpiry: true },
   { value: "ostrzezenie_pisemne", label: "3. Ostrzeżenie pisemne", needsExpiry: true },
@@ -44,6 +54,6 @@ export const PUNISHMENT_TYPES = [
   { value: "prace_szkolne", label: "6. Prace szkolne", needsWork: true },
   { value: "ograniczenie_wolnosci", label: "7. Ograniczenie wolności", needsDegree: true, needsExpiry: true },
   { value: "areszt", label: "8. Areszt tymczasowy", needsHours: true },
-] as const;
+];
 
 export const DAYS_OF_WEEK = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];

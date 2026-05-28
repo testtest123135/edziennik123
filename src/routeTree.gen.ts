@@ -17,7 +17,6 @@ import { Route as AppZajeciaRouteImport } from './routes/app.zajecia'
 import { Route as AppZachowanieRouteImport } from './routes/app.zachowanie'
 import { Route as AppWiadomosciRouteImport } from './routes/app.wiadomosci'
 import { Route as AppUstawieniaRouteImport } from './routes/app.ustawienia'
-import { Route as AppUczniowieRouteImport } from './routes/app.uczniowie'
 import { Route as AppTematyRouteImport } from './routes/app.tematy'
 import { Route as AppPlanRouteImport } from './routes/app.plan'
 import { Route as AppOgloszeniaRouteImport } from './routes/app.ogloszenia'
@@ -70,11 +69,6 @@ const AppUstawieniaRoute = AppUstawieniaRouteImport.update({
   path: '/ustawienia',
   getParentRoute: () => AppRoute,
 } as any)
-const AppUczniowieRoute = AppUczniowieRouteImport.update({
-  id: '/uczniowie',
-  path: '/uczniowie',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppTematyRoute = AppTematyRouteImport.update({
   id: '/tematy',
   path: '/tematy',
@@ -121,14 +115,14 @@ const AppAiRoute = AppAiRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 const AppUczniowieIndexRoute = AppUczniowieIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppUczniowieRoute,
+  id: '/uczniowie/',
+  path: '/uczniowie/',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppUczniowieIdRoute = AppUczniowieIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppUczniowieRoute,
+  id: '/uczniowie/$id',
+  path: '/uczniowie/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -144,7 +138,6 @@ export interface FileRoutesByFullPath {
   '/app/ogloszenia': typeof AppOgloszeniaRoute
   '/app/plan': typeof AppPlanRoute
   '/app/tematy': typeof AppTematyRoute
-  '/app/uczniowie': typeof AppUczniowieRouteWithChildren
   '/app/ustawienia': typeof AppUstawieniaRoute
   '/app/wiadomosci': typeof AppWiadomosciRoute
   '/app/zachowanie': typeof AppZachowanieRoute
@@ -187,7 +180,6 @@ export interface FileRoutesById {
   '/app/ogloszenia': typeof AppOgloszeniaRoute
   '/app/plan': typeof AppPlanRoute
   '/app/tematy': typeof AppTematyRoute
-  '/app/uczniowie': typeof AppUczniowieRouteWithChildren
   '/app/ustawienia': typeof AppUstawieniaRoute
   '/app/wiadomosci': typeof AppWiadomosciRoute
   '/app/zachowanie': typeof AppZachowanieRoute
@@ -211,7 +203,6 @@ export interface FileRouteTypes {
     | '/app/ogloszenia'
     | '/app/plan'
     | '/app/tematy'
-    | '/app/uczniowie'
     | '/app/ustawienia'
     | '/app/wiadomosci'
     | '/app/zachowanie'
@@ -253,7 +244,6 @@ export interface FileRouteTypes {
     | '/app/ogloszenia'
     | '/app/plan'
     | '/app/tematy'
-    | '/app/uczniowie'
     | '/app/ustawienia'
     | '/app/wiadomosci'
     | '/app/zachowanie'
@@ -327,13 +317,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUstawieniaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/uczniowie': {
-      id: '/app/uczniowie'
-      path: '/uczniowie'
-      fullPath: '/app/uczniowie'
-      preLoaderRoute: typeof AppUczniowieRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/tematy': {
       id: '/app/tematy'
       path: '/tematy'
@@ -399,34 +382,20 @@ declare module '@tanstack/react-router' {
     }
     '/app/uczniowie/': {
       id: '/app/uczniowie/'
-      path: '/'
+      path: '/uczniowie'
       fullPath: '/app/uczniowie/'
       preLoaderRoute: typeof AppUczniowieIndexRouteImport
-      parentRoute: typeof AppUczniowieRoute
+      parentRoute: typeof AppRoute
     }
     '/app/uczniowie/$id': {
       id: '/app/uczniowie/$id'
-      path: '/$id'
+      path: '/uczniowie/$id'
       fullPath: '/app/uczniowie/$id'
       preLoaderRoute: typeof AppUczniowieIdRouteImport
-      parentRoute: typeof AppUczniowieRoute
+      parentRoute: typeof AppRoute
     }
   }
 }
-
-interface AppUczniowieRouteChildren {
-  AppUczniowieIdRoute: typeof AppUczniowieIdRoute
-  AppUczniowieIndexRoute: typeof AppUczniowieIndexRoute
-}
-
-const AppUczniowieRouteChildren: AppUczniowieRouteChildren = {
-  AppUczniowieIdRoute: AppUczniowieIdRoute,
-  AppUczniowieIndexRoute: AppUczniowieIndexRoute,
-}
-
-const AppUczniowieRouteWithChildren = AppUczniowieRoute._addFileChildren(
-  AppUczniowieRouteChildren,
-)
 
 interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
@@ -438,12 +407,13 @@ interface AppRouteChildren {
   AppOgloszeniaRoute: typeof AppOgloszeniaRoute
   AppPlanRoute: typeof AppPlanRoute
   AppTematyRoute: typeof AppTematyRoute
-  AppUczniowieRoute: typeof AppUczniowieRouteWithChildren
   AppUstawieniaRoute: typeof AppUstawieniaRoute
   AppWiadomosciRoute: typeof AppWiadomosciRoute
   AppZachowanieRoute: typeof AppZachowanieRoute
   AppZajeciaRoute: typeof AppZajeciaRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppUczniowieIdRoute: typeof AppUczniowieIdRoute
+  AppUczniowieIndexRoute: typeof AppUczniowieIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -456,12 +426,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppOgloszeniaRoute: AppOgloszeniaRoute,
   AppPlanRoute: AppPlanRoute,
   AppTematyRoute: AppTematyRoute,
-  AppUczniowieRoute: AppUczniowieRouteWithChildren,
   AppUstawieniaRoute: AppUstawieniaRoute,
   AppWiadomosciRoute: AppWiadomosciRoute,
   AppZachowanieRoute: AppZachowanieRoute,
   AppZajeciaRoute: AppZajeciaRoute,
   AppIndexRoute: AppIndexRoute,
+  AppUczniowieIdRoute: AppUczniowieIdRoute,
+  AppUczniowieIndexRoute: AppUczniowieIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -474,3 +445,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

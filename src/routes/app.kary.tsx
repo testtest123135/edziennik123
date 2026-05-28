@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -22,10 +22,20 @@ function PunishmentsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", hours: "" });
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("last_name")).data ?? [] });
+  const [fStudent, setFStudent] = useState("all");
+  const [fType, setFType] = useState("all");
+  const [sort, setSort] = useState("date_desc");
+
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
   const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name)").order("created_at", { ascending: false })).data ?? [] });
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
+
+  const filtered = useMemo(() => (items as any[])
+    .filter(p => fStudent === "all" || p.student_id === fStudent)
+    .filter(p => fType === "all" || p.type === fType)
+    .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
+    [items, fStudent, fType, sort]);
 
   const add = useMutation({
     mutationFn: async () => {
@@ -35,13 +45,11 @@ function PunishmentsPage() {
       if (typeMeta?.needsDegree) payload.degree = Number(form.degree) || null;
       if (typeMeta?.needsWork) payload.work_hours_required = Number(form.work_hours_required) || null;
       if (typeMeta?.needsHours) payload.hours = Math.min(168, Number(form.hours) || 0);
-      const { error } = await supabase.from("punishments").insert(payload);
-      if (error) throw error;
+      const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
     },
     onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); setOpen(false); },
     onError: (e: any) => toast.error(e.message),
   });
-
   const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => qc.invalidateQueries({ queryKey: ["punishments"] }) });
 
   return (
@@ -55,7 +63,7 @@ function PunishmentsPage() {
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
-                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.last_name} {s.first_name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Rodzaj kary</Label>
@@ -66,7 +74,6 @@ function PunishmentsPage() {
               </div>
               <div><Label>Powód *</Label><Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} /></div>
               <div><Label>Dodatkowe dane / opis</Label><Textarea value={form.details} onChange={e => setForm({...form, details: e.target.value})} /></div>
-
               {typeMeta?.needsExpiry && <div><Label>Wygasa (data)</Label><Input type="datetime-local" value={form.expires_at} onChange={e => setForm({...form, expires_at: e.target.value})} /></div>}
               {typeMeta?.needsPayment && (
                 <>
@@ -80,14 +87,24 @@ function PunishmentsPage() {
               {typeMeta?.needsDegree && <div><Label>Stopień (1–20)</Label><Input type="number" min="1" max="20" value={form.degree} onChange={e => setForm({...form, degree: e.target.value})} /></div>}
               {typeMeta?.needsWork && <div><Label>Wymagane godziny pracy</Label><Input type="number" step="0.5" value={form.work_hours_required} onChange={e => setForm({...form, work_hours_required: e.target.value})} /></div>}
               {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /></div>}
-
               <Button onClick={() => add.mutate()} disabled={!form.student_id || !form.reason} className="w-full">Nałóż karę</Button>
             </div>
           </DialogContent>
         </Dialog>
       } />
       <div className="p-8 space-y-3">
-        {(items as any[]).map(p => {
+        <Card className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+          <div><Label className="text-xs">Uczeń</Label>
+            <Select value={fStudent} onValueChange={setFStudent}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszyscy</SelectItem>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Rodzaj kary</Label>
+            <Select value={fType} onValueChange={setFType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszystkie</SelectItem>{PUNISHMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Sortuj</Label>
+            <Select value={sort} onValueChange={setSort}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="date_desc">Data ↓</SelectItem><SelectItem value="date_asc">Data ↑</SelectItem></SelectContent></Select>
+          </div>
+        </Card>
+        {filtered.map(p => {
           const meta = PUNISHMENT_TYPES.find(t => t.value === p.type);
           return (
             <Card key={p.id} className="p-4">
@@ -96,7 +113,7 @@ function PunishmentsPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-sm">{meta?.label ?? p.type}</h3>
-                    <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.last_name} {p.students?.first_name}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.first_name} {p.students?.last_name}</span>
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(p.created_at).toLocaleString("pl")}</span>
                   </div>
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
@@ -114,7 +131,7 @@ function PunishmentsPage() {
             </Card>
           );
         })}
-        {!items.length && <Card className="p-8 text-center text-muted-foreground">Brak kar.</Card>}
+        {!filtered.length && <Card className="p-8 text-center text-muted-foreground">Brak kar.</Card>}
       </div>
     </div>
   );

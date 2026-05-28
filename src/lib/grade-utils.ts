@@ -57,3 +57,14 @@ export const PUNISHMENT_TYPES: readonly PunishmentType[] = [
 ];
 
 export const DAYS_OF_WEEK = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
+
+export function fullName(s?: { first_name?: string | null; last_name?: string | null } | null): string {
+  if (!s) return "";
+  return `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim();
+}
+
+export function attendancePct(rows: { status: string }[]): number {
+  if (!rows.length) return 0;
+  const present = rows.filter(r => ["obecny", "spozniony", "usprawiedliwiony", "wycieczka"].includes(r.status)).length;
+  return Math.round((present / rows.length) * 100);
+}

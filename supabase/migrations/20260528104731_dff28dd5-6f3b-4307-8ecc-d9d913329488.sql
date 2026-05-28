@@ -1,0 +1,1 @@
+UPDATE public.app_settings SET ai_provider='groq', ai_model='meta-llama/llama-4-scout-17b-16e-instruct', ai_vision_enabled=true, updated_at=now() WHERE id=1;

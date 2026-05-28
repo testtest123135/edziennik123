@@ -22,9 +22,16 @@ function MessagesPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ student_id: "", subject: "", body: "" });
   const genReply = useServerFn(generateParentReply);
+  const [fStudent, setFStudent] = useState("all");
+  const [fDir, setFDir] = useState("all");
+  const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("last_name")).data ?? [] });
-  const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(100)).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
+  const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(200)).data ?? [] });
+  const filteredMsgs = (msgs as any[])
+    .filter(m => fStudent === "all" || m.student_id === fStudent)
+    .filter(m => fDir === "all" || m.direction === fDir)
+    .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at));
 
   const send = useMutation({
     mutationFn: async () => {
@@ -54,7 +61,7 @@ function MessagesPage() {
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
-                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.last_name} {s.first_name} {s.parent_name && `(${s.parent_name})`}</SelectItem>)}</SelectContent>
+                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name} {s.parent_name && `(${s.parent_name})`}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Temat</Label><Input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} /></div>
@@ -74,7 +81,7 @@ function MessagesPage() {
                     {m.direction === "outgoing" ? "→ Do rodzica" : m.direction === "ai_reply" ? "← AI (rodzic)" : "← Przychodząca"}
                   </span>
                   <span>{new Date(m.created_at).toLocaleString("pl")}</span>
-                  <span className="ml-auto">{m.students?.last_name} {m.students?.first_name}</span>
+                  <span className="ml-auto">{m.students?.first_name} {m.students?.last_name}</span>
                 </div>
                 {m.subject && <p className="font-semibold text-sm">{m.subject}</p>}
                 <p className="text-sm whitespace-pre-wrap mt-1">{m.body}</p>

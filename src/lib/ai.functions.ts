@@ -85,9 +85,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     let assistantText: string;
     if (provider === "groq") {
-      const groqKey = process.env.GROQ_API_KEY;
-      if (!groqKey) throw new Error("Brak klucza Groq. Dodaj go w Ustawieniach.");
-      assistantText = await callGroq(messages, model || "llama-3.3-70b-versatile", groqKey);
+      const groqKey = process.env.AI || process.env.GROQ_API_KEY;
+      if (!groqKey) throw new Error("Brak klucza AI w sekretach Cloud (oczekiwana nazwa: AI).");
+      assistantText = await callGroq(messages, model || "meta-llama/llama-4-scout-17b-16e-instruct", groqKey);
     } else {
       assistantText = await callLovableAI(messages, model);
     }

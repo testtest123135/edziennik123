@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,24 +22,31 @@ function BehaviorPage() {
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("last_name")).data ?? [] });
-  const { data: entries = [] } = useQuery({ queryKey: ["behavior"], queryFn: async () => (await supabase.from("behavior_entries").select("*, students(first_name, last_name)").order("created_at", { ascending: false }).limit(100)).data ?? [] });
+  const [fStudent, setFStudent] = useState("all");
+  const [fSign, setFSign] = useState("all");
+  const [sort, setSort] = useState("date_desc");
+
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
+  const { data: entries = [] } = useQuery({ queryKey: ["behavior"], queryFn: async () => (await supabase.from("behavior_entries").select("*, students(first_name, last_name)").order("created_at", { ascending: false }).limit(200)).data ?? [] });
+
+  const filteredEntries = useMemo(() => (entries as any[])
+    .filter(e => fStudent === "all" || e.student_id === fStudent)
+    .filter(e => fSign === "all" || (fSign === "plus" ? e.points > 0 : e.points < 0))
+    .sort((a, b) => {
+      if (sort === "date_asc") return a.created_at.localeCompare(b.created_at);
+      if (sort === "points_desc") return b.points - a.points;
+      if (sort === "points_asc") return a.points - b.points;
+      return b.created_at.localeCompare(a.created_at);
+    }), [entries, fStudent, fSign, sort]);
 
   const add = useMutation({
     mutationFn: async (sign: 1 | -1) => {
       const p = Number(points) * sign;
       const rows = selected.map(sid => ({ student_id: sid, points: p, reason }));
-      const { error } = await supabase.from("behavior_entries").insert(rows);
-      if (error) throw error;
+      const { error } = await supabase.from("behavior_entries").insert(rows); if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Punkty dodane");
-      qc.invalidateQueries({ queryKey: ["behavior"] });
-      qc.invalidateQueries({ queryKey: ["students"] });
-      setOpen(false); setSelected([]); setReason("");
-    },
+    onSuccess: () => { toast.success("Punkty dodane"); qc.invalidateQueries({ queryKey: ["behavior"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setSelected([]); setReason(""); },
   });
-
   const del = useMutation({
     mutationFn: async (id: string) => { await supabase.from("behavior_entries").delete().eq("id", id); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["behavior"] }); qc.invalidateQueries({ queryKey: ["students"] }); },
@@ -63,7 +71,7 @@ function BehaviorPage() {
                   {students.map(s => (
                     <label key={s.id} className="flex items-center gap-2 px-2 py-1 hover:bg-muted rounded text-sm cursor-pointer">
                       <Checkbox checked={selected.includes(s.id)} onCheckedChange={(v) => setSelected(v ? [...selected, s.id] : selected.filter(x => x !== s.id))} />
-                      {s.last_name} {s.first_name} <span className="ml-auto text-muted-foreground">{s.behavior_points} pkt</span>
+                      {s.first_name} {s.last_name} <span className="ml-auto text-muted-foreground">{s.behavior_points} pkt</span>
                     </label>
                   ))}
                 </div>
@@ -76,31 +84,44 @@ function BehaviorPage() {
           </DialogContent>
         </Dialog>
       } />
-      <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3">Aktualne saldo uczniów</h3>
-          <div className="space-y-1">
-            {students.map(s => (
-              <div key={s.id} className="flex justify-between text-sm py-1.5 border-b border-border last:border-0">
-                <span>{s.last_name} {s.first_name}</span>
-                <span className={`font-mono font-bold ${s.behavior_points >= 50 ? "text-success" : "text-destructive"}`}>{s.behavior_points} pkt</span>
-              </div>
-            ))}
+      <div className="p-8 space-y-4">
+        <Card className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 items-end">
+          <div><Label className="text-xs">Uczeń</Label>
+            <Select value={fStudent} onValueChange={setFStudent}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszyscy</SelectItem>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Znak</Label>
+            <Select value={fSign} onValueChange={setFSign}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszystkie</SelectItem><SelectItem value="plus">Tylko plus</SelectItem><SelectItem value="minus">Tylko minus</SelectItem></SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Sortuj</Label>
+            <Select value={sort} onValueChange={setSort}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="date_desc">Data ↓</SelectItem><SelectItem value="date_asc">Data ↑</SelectItem><SelectItem value="points_desc">Punkty ↓</SelectItem><SelectItem value="points_asc">Punkty ↑</SelectItem></SelectContent></Select>
           </div>
         </Card>
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3">Historia wpisów</h3>
-          <div className="space-y-1 max-h-[500px] overflow-y-auto">
-            {(entries as any[]).map(e => (
-              <div key={e.id} className="flex items-center gap-2 text-sm py-1.5 border-b border-border last:border-0">
-                <span className={`font-mono font-bold ${e.points > 0 ? "text-success" : "text-destructive"}`}>{e.points > 0 ? "+" : ""}{e.points}</span>
-                <span className="flex-1">{e.students?.last_name} {e.students?.first_name}</span>
-                <span className="text-muted-foreground text-xs">{e.reason ?? "—"}</span>
-                <button onClick={() => del.mutate(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive/70" /></button>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="p-4">
+            <h3 className="font-semibold mb-3">Aktualne saldo uczniów</h3>
+            <div className="space-y-1">
+              {students.map(s => (
+                <div key={s.id} className="flex justify-between text-sm py-1.5 border-b border-border last:border-0">
+                  <span>{s.first_name} {s.last_name}</span>
+                  <span className={`font-mono font-bold ${s.behavior_points >= 50 ? "text-success" : "text-destructive"}`}>{s.behavior_points} pkt</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="p-4">
+            <h3 className="font-semibold mb-3">Historia wpisów</h3>
+            <div className="space-y-1 max-h-[500px] overflow-y-auto">
+              {filteredEntries.map(e => (
+                <div key={e.id} className="flex items-center gap-2 text-sm py-1.5 border-b border-border last:border-0">
+                  <span className={`font-mono font-bold ${e.points > 0 ? "text-success" : "text-destructive"}`}>{e.points > 0 ? "+" : ""}{e.points}</span>
+                  <span className="flex-1">{e.students?.first_name} {e.students?.last_name}</span>
+                  <span className="text-muted-foreground text-xs">{e.reason ?? "—"}</span>
+                  <button onClick={() => del.mutate(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive/70" /></button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

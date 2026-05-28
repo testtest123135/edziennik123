@@ -23,7 +23,7 @@ function MessagesPage() {
   const [form, setForm] = useState({ student_id: "", subject: "", body: "" });
   const genReply = useServerFn(generateParentReply);
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("last_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
   const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(100)).data ?? [] });
 
   const send = useMutation({
@@ -54,7 +54,7 @@ function MessagesPage() {
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
-                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.last_name} {s.first_name} {s.parent_name && `(${s.parent_name})`}</SelectItem>)}</SelectContent>
+                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name} {s.parent_name && `(${s.parent_name})`}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Temat</Label><Input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} /></div>
@@ -74,7 +74,7 @@ function MessagesPage() {
                     {m.direction === "outgoing" ? "→ Do rodzica" : m.direction === "ai_reply" ? "← AI (rodzic)" : "← Przychodząca"}
                   </span>
                   <span>{new Date(m.created_at).toLocaleString("pl")}</span>
-                  <span className="ml-auto">{m.students?.last_name} {m.students?.first_name}</span>
+                  <span className="ml-auto">{m.students?.first_name} {m.students?.last_name}</span>
                 </div>
                 {m.subject && <p className="font-semibold text-sm">{m.subject}</p>}
                 <p className="text-sm whitespace-pre-wrap mt-1">{m.body}</p>

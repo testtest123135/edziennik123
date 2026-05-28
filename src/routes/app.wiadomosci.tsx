@@ -22,9 +22,16 @@ function MessagesPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ student_id: "", subject: "", body: "" });
   const genReply = useServerFn(generateParentReply);
+  const [fStudent, setFStudent] = useState("all");
+  const [fDir, setFDir] = useState("all");
+  const [sort, setSort] = useState("date_desc");
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
-  const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(100)).data ?? [] });
+  const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(200)).data ?? [] });
+  const filteredMsgs = (msgs as any[])
+    .filter(m => fStudent === "all" || m.student_id === fStudent)
+    .filter(m => fDir === "all" || m.direction === fDir)
+    .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at));
 
   const send = useMutation({
     mutationFn: async () => {

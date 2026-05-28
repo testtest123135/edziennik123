@@ -27,6 +27,8 @@ import { Route as AppKaryRouteImport } from './routes/app.kary'
 import { Route as AppKalendarzRouteImport } from './routes/app.kalendarz'
 import { Route as AppFrekwencjaRouteImport } from './routes/app.frekwencja'
 import { Route as AppAiRouteImport } from './routes/app.ai'
+import { Route as AppUczniowieIndexRouteImport } from './routes/app.uczniowie.index'
+import { Route as AppUczniowieIdRouteImport } from './routes/app.uczniowie.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -118,6 +120,16 @@ const AppAiRoute = AppAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUczniowieIndexRoute = AppUczniowieIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppUczniowieRoute,
+} as any)
+const AppUczniowieIdRoute = AppUczniowieIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppUczniowieRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -132,12 +144,14 @@ export interface FileRoutesByFullPath {
   '/app/ogloszenia': typeof AppOgloszeniaRoute
   '/app/plan': typeof AppPlanRoute
   '/app/tematy': typeof AppTematyRoute
-  '/app/uczniowie': typeof AppUczniowieRoute
+  '/app/uczniowie': typeof AppUczniowieRouteWithChildren
   '/app/ustawienia': typeof AppUstawieniaRoute
   '/app/wiadomosci': typeof AppWiadomosciRoute
   '/app/zachowanie': typeof AppZachowanieRoute
   '/app/zajecia': typeof AppZajeciaRoute
   '/app/': typeof AppIndexRoute
+  '/app/uczniowie/$id': typeof AppUczniowieIdRoute
+  '/app/uczniowie/': typeof AppUczniowieIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,12 +165,13 @@ export interface FileRoutesByTo {
   '/app/ogloszenia': typeof AppOgloszeniaRoute
   '/app/plan': typeof AppPlanRoute
   '/app/tematy': typeof AppTematyRoute
-  '/app/uczniowie': typeof AppUczniowieRoute
   '/app/ustawienia': typeof AppUstawieniaRoute
   '/app/wiadomosci': typeof AppWiadomosciRoute
   '/app/zachowanie': typeof AppZachowanieRoute
   '/app/zajecia': typeof AppZajeciaRoute
   '/app': typeof AppIndexRoute
+  '/app/uczniowie/$id': typeof AppUczniowieIdRoute
+  '/app/uczniowie': typeof AppUczniowieIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,12 +187,14 @@ export interface FileRoutesById {
   '/app/ogloszenia': typeof AppOgloszeniaRoute
   '/app/plan': typeof AppPlanRoute
   '/app/tematy': typeof AppTematyRoute
-  '/app/uczniowie': typeof AppUczniowieRoute
+  '/app/uczniowie': typeof AppUczniowieRouteWithChildren
   '/app/ustawienia': typeof AppUstawieniaRoute
   '/app/wiadomosci': typeof AppWiadomosciRoute
   '/app/zachowanie': typeof AppZachowanieRoute
   '/app/zajecia': typeof AppZajeciaRoute
   '/app/': typeof AppIndexRoute
+  '/app/uczniowie/$id': typeof AppUczniowieIdRoute
+  '/app/uczniowie/': typeof AppUczniowieIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -200,6 +217,8 @@ export interface FileRouteTypes {
     | '/app/zachowanie'
     | '/app/zajecia'
     | '/app/'
+    | '/app/uczniowie/$id'
+    | '/app/uczniowie/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -213,12 +232,13 @@ export interface FileRouteTypes {
     | '/app/ogloszenia'
     | '/app/plan'
     | '/app/tematy'
-    | '/app/uczniowie'
     | '/app/ustawienia'
     | '/app/wiadomosci'
     | '/app/zachowanie'
     | '/app/zajecia'
     | '/app'
+    | '/app/uczniowie/$id'
+    | '/app/uczniowie'
   id:
     | '__root__'
     | '/'
@@ -239,6 +259,8 @@ export interface FileRouteTypes {
     | '/app/zachowanie'
     | '/app/zajecia'
     | '/app/'
+    | '/app/uczniowie/$id'
+    | '/app/uczniowie/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -375,8 +397,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/uczniowie/': {
+      id: '/app/uczniowie/'
+      path: '/'
+      fullPath: '/app/uczniowie/'
+      preLoaderRoute: typeof AppUczniowieIndexRouteImport
+      parentRoute: typeof AppUczniowieRoute
+    }
+    '/app/uczniowie/$id': {
+      id: '/app/uczniowie/$id'
+      path: '/$id'
+      fullPath: '/app/uczniowie/$id'
+      preLoaderRoute: typeof AppUczniowieIdRouteImport
+      parentRoute: typeof AppUczniowieRoute
+    }
   }
 }
+
+interface AppUczniowieRouteChildren {
+  AppUczniowieIdRoute: typeof AppUczniowieIdRoute
+  AppUczniowieIndexRoute: typeof AppUczniowieIndexRoute
+}
+
+const AppUczniowieRouteChildren: AppUczniowieRouteChildren = {
+  AppUczniowieIdRoute: AppUczniowieIdRoute,
+  AppUczniowieIndexRoute: AppUczniowieIndexRoute,
+}
+
+const AppUczniowieRouteWithChildren = AppUczniowieRoute._addFileChildren(
+  AppUczniowieRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
@@ -388,7 +438,7 @@ interface AppRouteChildren {
   AppOgloszeniaRoute: typeof AppOgloszeniaRoute
   AppPlanRoute: typeof AppPlanRoute
   AppTematyRoute: typeof AppTematyRoute
-  AppUczniowieRoute: typeof AppUczniowieRoute
+  AppUczniowieRoute: typeof AppUczniowieRouteWithChildren
   AppUstawieniaRoute: typeof AppUstawieniaRoute
   AppWiadomosciRoute: typeof AppWiadomosciRoute
   AppZachowanieRoute: typeof AppZachowanieRoute
@@ -406,7 +456,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOgloszeniaRoute: AppOgloszeniaRoute,
   AppPlanRoute: AppPlanRoute,
   AppTematyRoute: AppTematyRoute,
-  AppUczniowieRoute: AppUczniowieRoute,
+  AppUczniowieRoute: AppUczniowieRouteWithChildren,
   AppUstawieniaRoute: AppUstawieniaRoute,
   AppWiadomosciRoute: AppWiadomosciRoute,
   AppZachowanieRoute: AppZachowanieRoute,
@@ -424,3 +474,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

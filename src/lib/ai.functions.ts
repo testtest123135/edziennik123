@@ -48,6 +48,15 @@ async function callGroq(messages: any[], model: string, apiKey: string) {
   return json.choices?.[0]?.message?.content ?? "";
 }
 
+const BROKEN_MODELS = ["meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"];
+function pickModel(provider: string, raw?: string | null): string {
+  const m = (raw ?? "").trim();
+  if (!m || BROKEN_MODELS.includes(m) || m.includes("llama-4")) {
+    return provider === "groq" ? "llama-3.3-70b-versatile" : "google/gemini-2.5-flash";
+  }
+  return m;
+}
+
 export const sendChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ChatInput.parse(d))
@@ -56,7 +65,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: settings } = await supabase.from("app_settings").select("*").eq("id", 1).single();
     const provider = settings?.ai_provider ?? "lovable";
-    const model = settings?.ai_model ?? "google/gemini-3-flash-preview";
+    const model = pickModel(provider, settings?.ai_model);
 
     const userContent: any = data.imageUrl
       ? [

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PUNISHMENT_TYPES } from "@/lib/grade-utils";
-import { Plus, Trash2, Gavel } from "lucide-react";
+import { Plus, Trash2, Gavel, Wallet, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/kary")({ component: PunishmentsPage });
@@ -21,13 +21,14 @@ function PunishmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", hours: "" });
+  const [actionPunishment, setActionPunishment] = useState<any>(null);
 
   const [fStudent, setFStudent] = useState("all");
   const [fType, setFType] = useState("all");
   const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
-  const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name)").order("created_at", { ascending: false })).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("first_name")).data ?? [] });
+  const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name, journal_no)").order("created_at", { ascending: false })).data ?? [] });
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
 
@@ -63,7 +64,7 @@ function PunishmentsPage() {
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
-                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.journal_no}. {s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Rodzaj kary</Label>
@@ -106,6 +107,8 @@ function PunishmentsPage() {
         </Card>
         {filtered.map(p => {
           const meta = PUNISHMENT_TYPES.find(t => t.value === p.type);
+          const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;
+          const workedFully = p.work_hours_required && (p.work_hours_done ?? 0) >= p.work_hours_required;
           return (
             <Card key={p.id} className="p-4">
               <div className="flex items-start gap-3">
@@ -113,7 +116,8 @@ function PunishmentsPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-sm">{meta?.label ?? p.type}</h3>
-                    <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.first_name} {p.students?.last_name}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.journal_no}. {p.students?.first_name} {p.students?.last_name}</span>
+                    {(paidFully || workedFully) && <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Wykonana</span>}
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(p.created_at).toLocaleString("pl")}</span>
                   </div>
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
@@ -126,13 +130,122 @@ function PunishmentsPage() {
                     {p.hours && <span>{p.hours} h aresztu</span>}
                   </div>
                 </div>
-                <button onClick={() => del.mutate(p.id)}><Trash2 className="w-4 h-4 text-destructive" /></button>
+                <div className="flex flex-col gap-1">
+                  {(meta?.needsPayment || meta?.needsWork) && (
+                    <Button size="sm" variant="outline" onClick={() => setActionPunishment(p)}>
+                      <Wallet className="w-3.5 h-3.5 mr-1" />{meta?.needsPayment ? "Opłać" : "Wpisz wykonanie"}
+                    </Button>
+                  )}
+                  <button onClick={() => { if (window.confirm("Usunąć karę?")) del.mutate(p.id); }}><Trash2 className="w-4 h-4 text-destructive" /></button>
+                </div>
               </div>
             </Card>
           );
         })}
         {!filtered.length && <Card className="p-8 text-center text-muted-foreground">Brak kar.</Card>}
       </div>
+
+      <PaymentDialog punishment={actionPunishment} onClose={() => setActionPunishment(null)} />
     </div>
+  );
+}
+
+function PaymentDialog({ punishment, onClose }: { punishment: any; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState("");
+  const [hours, setHours] = useState("");
+  const [note, setNote] = useState("");
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["punishment_payments", punishment?.id],
+    queryFn: async () => punishment ? (await supabase.from("punishment_payments").select("*").eq("punishment_id", punishment.id).order("paid_at", { ascending: false })).data ?? [] : [],
+    enabled: !!punishment,
+  });
+
+  const meta = PUNISHMENT_TYPES.find(t => t.value === punishment?.type);
+  const isMoney = !!meta?.needsPayment;
+  const remaining = isMoney ? Math.max(0, (punishment?.amount ?? 0) - (punishment?.amount_paid ?? 0)) : Math.max(0, (punishment?.work_hours_required ?? 0) - (punishment?.work_hours_done ?? 0));
+
+  const pay = useMutation({
+    mutationFn: async ({ full }: { full: boolean }) => {
+      if (!punishment) return;
+      const row: any = { punishment_id: punishment.id, note: note || null };
+      if (isMoney) {
+        row.kind = "payment";
+        row.amount = full ? remaining : Number(amount);
+        if (!row.amount || row.amount <= 0) throw new Error("Podaj kwotę");
+      } else {
+        row.kind = "work_hours";
+        row.hours = full ? remaining : Number(hours);
+        if (!row.hours || row.hours <= 0) throw new Error("Podaj liczbę godzin");
+      }
+      const { error } = await supabase.from("punishment_payments").insert(row);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Zapisano");
+      qc.invalidateQueries({ queryKey: ["punishments"] });
+      qc.invalidateQueries({ queryKey: ["punishment_payments", punishment?.id] });
+      setAmount(""); setHours(""); setNote("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const delPay = useMutation({
+    mutationFn: async (id: string) => { await supabase.from("punishment_payments").delete().eq("id", id); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["punishments"] });
+      qc.invalidateQueries({ queryKey: ["punishment_payments", punishment?.id] });
+    },
+  });
+
+  return (
+    <Dialog open={!!punishment} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{isMoney ? "Opłata kary grzywny" : "Wykonanie pracy"}</DialogTitle></DialogHeader>
+        {punishment && (
+          <div className="space-y-3">
+            <div className="text-sm bg-muted p-3 rounded">
+              <p><strong>{punishment.students?.first_name} {punishment.students?.last_name}</strong> — {meta?.label}</p>
+              {isMoney ? (
+                <p className="text-xs mt-1">Łącznie: <strong>{punishment.amount} zł</strong> • Opłacono: {punishment.amount_paid ?? 0} zł • Pozostało: <strong className="text-destructive">{remaining.toFixed(2)} zł</strong>{punishment.installments_allowed && " • Raty dozwolone"}</p>
+              ) : (
+                <p className="text-xs mt-1">Wymagane: <strong>{punishment.work_hours_required} h</strong> • Wykonano: {punishment.work_hours_done ?? 0} h • Pozostało: <strong className="text-destructive">{remaining} h</strong></p>
+              )}
+            </div>
+
+            {remaining > 0 && (
+              <>
+                {isMoney ? (
+                  <div><Label>Kwota wpłaty (zł)</Label><Input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder={punishment.installments_allowed ? "rata, np. 50" : String(remaining)} /></div>
+                ) : (
+                  <div><Label>Godziny wykonane</Label><Input type="number" step="0.5" value={hours} onChange={e => setHours(e.target.value)} /></div>
+                )}
+                <div><Label>Notatka</Label><Input value={note} onChange={e => setNote(e.target.value)} placeholder="opcjonalnie" /></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => pay.mutate({ full: false })}>Zapisz {isMoney ? "wpłatę" : "godziny"}</Button>
+                  <Button variant="outline" onClick={() => pay.mutate({ full: true })}>Zapłać całość ({remaining.toFixed(isMoney ? 2 : 1)})</Button>
+                </div>
+              </>
+            )}
+
+            <div>
+              <Label className="text-xs">Historia</Label>
+              <div className="border rounded max-h-48 overflow-y-auto divide-y">
+                {payments.length === 0 && <p className="text-xs text-muted-foreground p-3 text-center">Brak wpisów.</p>}
+                {(payments as any[]).map(p => (
+                  <div key={p.id} className="flex items-center gap-2 p-2 text-xs">
+                    <span className="font-mono">{new Date(p.paid_at).toLocaleDateString("pl")}</span>
+                    <span className="font-semibold">{p.kind === "payment" ? `${p.amount} zł` : `${p.hours} h`}</span>
+                    {p.note && <span className="text-muted-foreground flex-1 truncate">{p.note}</span>}
+                    <button onClick={() => delPay.mutate(p.id)}><Trash2 className="w-3 h-3 text-destructive" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

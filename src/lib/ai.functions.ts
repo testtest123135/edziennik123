@@ -120,7 +120,7 @@ export const generateParentReply = createServerFn({ method: "POST" })
     if (!msg) throw new Error("Wiadomość nie znaleziona");
 
     const { data: settings } = await supabase.from("app_settings").select("*").eq("id", 1).single();
-    const model = settings?.ai_model ?? "google/gemini-3-flash-preview";
+    const model = pickModel("lovable", settings?.ai_model);
 
     const prompt = `Wcielasz się w rolę rodzica ucznia ${msg.students?.first_name ?? ""} ${msg.students?.last_name ?? ""}. Nauczyciel napisał do Ciebie poniższą wiadomość. Napisz krótką, naturalną i grzeczną odpowiedź rodzica (2-4 zdania). Bez nagłówków, bez podpisu.
 

@@ -16,8 +16,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/app/ustawienia")({ component: SettingsPage });
 
 const AI_MODELS = [
-  { v: "google/gemini-3-flash-preview", l: "Gemini 3 Flash (szybki)" },
+  { v: "google/gemini-2.5-flash", l: "Gemini 2.5 Flash (szybki, Vision)" },
   { v: "google/gemini-2.5-pro", l: "Gemini 2.5 Pro (mocny, Vision)" },
+  { v: "google/gemini-2.5-flash-lite", l: "Gemini 2.5 Flash Lite (najszybszy)" },
   { v: "openai/gpt-5", l: "GPT-5 (premium)" },
   { v: "openai/gpt-5-mini", l: "GPT-5 Mini" },
 ];
@@ -86,7 +87,7 @@ function SettingsPage() {
             <div className="flex items-center gap-3"><Switch checked={settings.ai_vision_enabled ?? true} onCheckedChange={(v) => updateSettings.mutate({ ai_vision_enabled: v })} /><Label>Vision (analiza obrazu)</Label></div>
           </div>
           {settings.ai_provider === "groq" && (
-            <p className="text-xs text-muted-foreground mt-3">Klucz API jest pobierany z sekretu <code>AI</code> w Lovable Cloud. Polecane modele Vision: <code>meta-llama/llama-4-scout-17b-16e-instruct</code>, <code>meta-llama/llama-4-maverick-17b-128e-instruct</code>.</p>
+            <p className="text-xs text-muted-foreground mt-3">Klucz API z sekretu <code>AI</code> w Lovable Cloud. Polecane: <code>llama-3.3-70b-versatile</code> (tekst), <code>meta-llama/llama-4-scout-17b-16e-instruct</code> (Vision — może wymagać dostępu).</p>
           )}
 
           <div className="border-t pt-4 mt-4">

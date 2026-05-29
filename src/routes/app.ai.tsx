@@ -96,7 +96,16 @@ function AIPage() {
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }}}
                   className="resize-none" rows={2} />
                 <div className="flex flex-col gap-2">
-                  <Button size="icon" variant="outline" onClick={() => { const u = prompt("URL obrazu (Vision):"); if (u) setImageUrl(u); }}><ImageIcon className="w-4 h-4" /></Button>
+                  <input type="file" accept="image/*" id="ai-file" className="hidden" onChange={async (e) => {
+                    const f = e.target.files?.[0]; if (!f) return;
+                    const path = `${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+                    const { error } = await supabase.storage.from("ai-uploads").upload(path, f, { upsert: false });
+                    if (error) { toast.error("Upload nieudany: " + error.message); return; }
+                    const { data } = supabase.storage.from("ai-uploads").getPublicUrl(path);
+                    setImageUrl(data.publicUrl); toast.success("Załączono obraz");
+                  }} />
+                  <Button size="icon" variant="outline" title="Załącz plik" onClick={() => document.getElementById("ai-file")?.click()}><ImageIcon className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Wklej URL" onClick={() => { const u = prompt("URL obrazu:"); if (u) setImageUrl(u); }} className="text-xs">URL</Button>
                   <Button size="icon" onClick={submit} disabled={!input.trim() || sending}><Send className="w-4 h-4" /></Button>
                 </div>
               </div>

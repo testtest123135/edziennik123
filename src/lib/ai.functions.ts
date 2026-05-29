@@ -48,6 +48,15 @@ async function callGroq(messages: any[], model: string, apiKey: string) {
   return json.choices?.[0]?.message?.content ?? "";
 }
 
+const BROKEN_MODELS = ["meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"];
+function pickModel(provider: string, raw?: string | null): string {
+  const m = (raw ?? "").trim();
+  if (!m || BROKEN_MODELS.includes(m) || m.includes("llama-4")) {
+    return provider === "groq" ? "llama-3.3-70b-versatile" : "google/gemini-2.5-flash";
+  }
+  return m;
+}
+
 export const sendChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => ChatInput.parse(d))
@@ -56,7 +65,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: settings } = await supabase.from("app_settings").select("*").eq("id", 1).single();
     const provider = settings?.ai_provider ?? "lovable";
-    const model = settings?.ai_model ?? "google/gemini-3-flash-preview";
+    const model = pickModel(provider, settings?.ai_model);
 
     const userContent: any = data.imageUrl
       ? [
@@ -87,7 +96,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     if (provider === "groq") {
       const groqKey = process.env.AI || process.env.GROQ_API_KEY;
       if (!groqKey) throw new Error("Brak klucza AI w sekretach Cloud (oczekiwana nazwa: AI).");
-      assistantText = await callGroq(messages, model || "meta-llama/llama-4-scout-17b-16e-instruct", groqKey);
+      assistantText = await callGroq(messages, model, groqKey);
     } else {
       assistantText = await callLovableAI(messages, model);
     }
@@ -111,7 +120,7 @@ export const generateParentReply = createServerFn({ method: "POST" })
     if (!msg) throw new Error("Wiadomość nie znaleziona");
 
     const { data: settings } = await supabase.from("app_settings").select("*").eq("id", 1).single();
-    const model = settings?.ai_model ?? "google/gemini-3-flash-preview";
+    const model = pickModel("lovable", settings?.ai_model);
 
     const prompt = `Wcielasz się w rolę rodzica ucznia ${msg.students?.first_name ?? ""} ${msg.students?.last_name ?? ""}. Nauczyciel napisał do Ciebie poniższą wiadomość. Napisz krótką, naturalną i grzeczną odpowiedź rodzica (2-4 zdania). Bez nagłówków, bez podpisu.
 

@@ -485,6 +485,39 @@ export type Database = {
         }
         Relationships: []
       }
+      punishment_payments: {
+        Row: {
+          amount: number | null
+          created_at: string
+          hours: number | null
+          id: string
+          kind: string
+          note: string | null
+          paid_at: string
+          punishment_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          hours?: number | null
+          id?: string
+          kind?: string
+          note?: string | null
+          paid_at?: string
+          punishment_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          hours?: number | null
+          id?: string
+          kind?: string
+          note?: string | null
+          paid_at?: string
+          punishment_id?: string
+        }
+        Relationships: []
+      }
       punishments: {
         Row: {
           amount: number | null
@@ -601,10 +634,12 @@ export type Database = {
           created_at: string
           first_name: string
           id: string
+          journal_no: number | null
           last_name: string
           notes: string | null
           parent_contact: string | null
           parent_name: string | null
+          sort_order: number
         }
         Insert: {
           behavior_points?: number
@@ -612,10 +647,12 @@ export type Database = {
           created_at?: string
           first_name: string
           id?: string
+          journal_no?: number | null
           last_name: string
           notes?: string | null
           parent_contact?: string | null
           parent_name?: string | null
+          sort_order?: number
         }
         Update: {
           behavior_points?: number
@@ -623,10 +660,12 @@ export type Database = {
           created_at?: string
           first_name?: string
           id?: string
+          journal_no?: number | null
           last_name?: string
           notes?: string | null
           parent_contact?: string | null
           parent_name?: string | null
+          sort_order?: number
         }
         Relationships: []
       }

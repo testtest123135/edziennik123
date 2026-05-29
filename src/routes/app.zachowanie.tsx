@@ -41,11 +41,19 @@ function BehaviorPage() {
 
   const add = useMutation({
     mutationFn: async (sign: 1 | -1) => {
-      const p = Number(points) * sign;
+      const absP = Math.abs(Number(points) || 0);
+      if (absP >= 30) {
+        const word = sign > 0 ? "plusowych" : "minusowych";
+        if (!window.confirm(`Czy na pewno chcesz przyznać ${absP} pkt ${word} dla ${selected.length} ucz.? To duża zmiana.`)) {
+          throw new Error("Anulowano");
+        }
+      }
+      const p = absP * sign;
       const rows = selected.map(sid => ({ student_id: sid, points: p, reason }));
       const { error } = await supabase.from("behavior_entries").insert(rows); if (error) throw error;
     },
     onSuccess: () => { toast.success("Punkty dodane"); qc.invalidateQueries({ queryKey: ["behavior"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setSelected([]); setReason(""); },
+    onError: (e: any) => { if (e.message !== "Anulowano") toast.error(e.message); },
   });
   const del = useMutation({
     mutationFn: async (id: string) => { await supabase.from("behavior_entries").delete().eq("id", id); },

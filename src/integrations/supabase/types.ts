@@ -326,6 +326,8 @@ export type Database = {
           grade: string
           grade_value: number | null
           id: string
+          is_correction: boolean
+          original_grade_id: string | null
           student_id: string
           subject_id: string | null
           weight: number
@@ -338,6 +340,8 @@ export type Database = {
           grade: string
           grade_value?: number | null
           id?: string
+          is_correction?: boolean
+          original_grade_id?: string | null
           student_id: string
           subject_id?: string | null
           weight?: number
@@ -350,6 +354,8 @@ export type Database = {
           grade?: string
           grade_value?: number | null
           id?: string
+          is_correction?: boolean
+          original_grade_id?: string | null
           student_id?: string
           subject_id?: string | null
           weight?: number
@@ -723,6 +729,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      renumber_students_journal: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "teacher" | "admin"

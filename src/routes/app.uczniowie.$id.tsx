@@ -39,7 +39,10 @@ function KartotekaPage() {
 
   if (!student) return <div className="p-8 text-muted-foreground">Ładowanie…</div>;
 
-  const avg = weightedAverage(grades as any);
+  // Wyklucz oceny, które mają poprawkę (do średniej i listy liczy się tylko aktualna wersja)
+  const replacedIds = new Set((grades as any[]).map(g => g.original_grade_id).filter(Boolean));
+  const activeGrades = (grades as any[]).filter(g => !replacedIds.has(g.id));
+  const avg = weightedAverage(activeGrades as any);
   const pct = attendancePct(attendance as any);
 
   return (
@@ -52,21 +55,24 @@ function KartotekaPage() {
           <Card className="p-4"><div className="text-xs text-muted-foreground">Średnia ważona</div><div className="text-2xl font-bold">{avg ? avg.toFixed(2) : "—"}</div></Card>
           <Card className="p-4"><div className="text-xs text-muted-foreground">Frekwencja</div><div className="text-2xl font-bold">{pct}%</div></Card>
           <Card className="p-4"><div className="text-xs text-muted-foreground">Pkt z zachowania</div><div className={`text-2xl font-bold ${student.behavior_points >= 50 ? "text-success" : "text-destructive"}`}>{student.behavior_points}</div></Card>
-          <Card className="p-4"><div className="text-xs text-muted-foreground">Liczba ocen</div><div className="text-2xl font-bold">{grades.length}</div></Card>
+          <Card className="p-4"><div className="text-xs text-muted-foreground">Liczba ocen</div><div className="text-2xl font-bold">{activeGrades.length}</div></Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="p-4">
             <h3 className="font-semibold mb-3">Oceny</h3>
             <div className="space-y-1 max-h-80 overflow-y-auto text-sm">
-              {(grades as any[]).map(g => (
+              {activeGrades.map((g: any) => (
                 <div key={g.id} className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
-                  <span className="font-bold text-accent w-10">{g.grade}</span>
+                  <span className="relative">
+                    <span className="font-bold text-accent w-10 inline-block">{g.grade}</span>
+                    {g.original_grade_id && <span className="absolute -top-1 -right-1 text-warning text-xs">★</span>}
+                  </span>
                   <span className="flex-1">{g.subjects?.name ?? "—"} <span className="text-xs text-muted-foreground">• {g.grade_categories?.name ?? "—"} • w{g.weight}</span></span>
                   <span className="text-xs text-muted-foreground">{g.date}</span>
                 </div>
               ))}
-              {!grades.length && <p className="text-muted-foreground text-sm">Brak ocen.</p>}
+              {!activeGrades.length && <p className="text-muted-foreground text-sm">Brak ocen.</p>}
             </div>
           </Card>
 

@@ -75,12 +75,19 @@ function StudentsPage() {
 
   const swapOrder = useMutation({
     mutationFn: async ({ a, b }: { a: any; b: any }) => {
-      // swap sort_order between two students. Use a temp value to avoid unique conflicts (none on sort_order, but stable).
       await supabase.from("students").update({ sort_order: -1 }).eq("id", a.id);
       await supabase.from("students").update({ sort_order: a.sort_order }).eq("id", b.id);
       await supabase.from("students").update({ sort_order: b.sort_order }).eq("id", a.id);
+      // Renumeruj nr w dzienniku zgodnie z nową kolejnością
+      await supabase.rpc("renumber_students_journal");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["students"] }),
+  });
+
+  const renumber = useMutation({
+    mutationFn: async () => { const { error } = await supabase.rpc("renumber_students_journal"); if (error) throw error; },
+    onSuccess: () => { toast.success("Przenumerowano uczniów"); qc.invalidateQueries({ queryKey: ["students"] }); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const openEdit = (s: any) => {
@@ -166,13 +173,14 @@ function StudentsPage() {
       <Dialog open={reorderOpen} onOpenChange={setReorderOpen}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Kolejność uczniów w systemie</DialogTitle></DialogHeader>
-          <p className="text-xs text-muted-foreground">Wpływa na domyślną kolejność we wszystkich modułach. Nr w dzienniku pozostaje bez zmian.</p>
+          <p className="text-xs text-muted-foreground">Wpływa na kolejność we wszystkich modułach. Nr w dzienniku jest aktualizowany automatycznie według kolejności.</p>
+          <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => renumber.mutate()}>Przenumeruj wg kolejności</Button></div>
           <div className="space-y-1">
             {ordered.map((s, idx) => (
               <div key={s.id} className="flex items-center gap-2 p-2 border rounded text-sm">
                 <span className="font-mono text-xs text-muted-foreground w-6">{idx + 1}.</span>
                 <span className="flex-1">{s.first_name} {s.last_name}</span>
-                <span className="text-xs text-muted-foreground">nr {s.journal_no}</span>
+                <span className="text-xs text-muted-foreground">nr {s.journal_no ?? "—"}</span>
                 <Button size="icon" variant="ghost" disabled={idx === 0} onClick={() => swapOrder.mutate({ a: s, b: ordered[idx - 1] })}><ArrowUp className="w-4 h-4" /></Button>
                 <Button size="icon" variant="ghost" disabled={idx === ordered.length - 1} onClick={() => swapOrder.mutate({ a: s, b: ordered[idx + 1] })}><ArrowDown className="w-4 h-4" /></Button>
               </div>

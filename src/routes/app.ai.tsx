@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/ai")({ component: AIPage });
 
+const DRAFT_KEY = (chatId: string | null) => `ai-draft:${chatId ?? "_"}`;
+const IMG_KEY = (chatId: string | null) => `ai-img:${chatId ?? "_"}`;
+
 function AIPage() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -33,6 +36,25 @@ function AIPage() {
     if (!activeId && chats.length > 0) setActiveId(chats[0].id);
   }, [chats, activeId]);
 
+  // Load draft when switching chats
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setInput(localStorage.getItem(DRAFT_KEY(activeId)) ?? "");
+    setImageUrl(localStorage.getItem(IMG_KEY(activeId)) ?? "");
+  }, [activeId]);
+
+  // Save draft on change (debounced via microtask)
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeId) return;
+    if (input) localStorage.setItem(DRAFT_KEY(activeId), input);
+    else localStorage.removeItem(DRAFT_KEY(activeId));
+  }, [input, activeId]);
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeId) return;
+    if (imageUrl) localStorage.setItem(IMG_KEY(activeId), imageUrl);
+    else localStorage.removeItem(IMG_KEY(activeId));
+  }, [imageUrl, activeId]);
+
   const newChat = async () => {
     const { data } = await supabase.from("ai_chats").insert({ title: "Nowy chat" }).select().single();
     if (data) { setActiveId(data.id); qc.invalidateQueries({ queryKey: ["ai_chats"] }); }
@@ -42,6 +64,7 @@ function AIPage() {
     mutationFn: async (id: string) => { await supabase.from("ai_chats").delete().eq("id", id); },
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ["ai_chats"] });
+      if (typeof window !== "undefined") { localStorage.removeItem(DRAFT_KEY(id)); localStorage.removeItem(IMG_KEY(id)); }
       if (activeId === id) setActiveId(null);
     },
   });
@@ -51,12 +74,15 @@ function AIPage() {
     setSending(true);
     const msg = input; const img = imageUrl;
     setInput(""); setImageUrl("");
+    if (typeof window !== "undefined") { localStorage.removeItem(DRAFT_KEY(activeId)); localStorage.removeItem(IMG_KEY(activeId)); }
     try {
       await send({ data: { chatId: activeId, userMessage: msg, imageUrl: img || undefined } });
       qc.invalidateQueries({ queryKey: ["ai_messages", activeId] });
       qc.invalidateQueries({ queryKey: ["ai_chats"] });
     } catch (e: any) {
       toast.error(e.message ?? "Błąd AI");
+      // restore draft on failure
+      setInput(msg); setImageUrl(img);
     } finally { setSending(false); inputRef.current?.focus(); }
   };
 
@@ -92,7 +118,7 @@ function AIPage() {
             <div className="border-t border-border p-4 space-y-2">
               {imageUrl && <div className="flex items-center gap-2 text-xs"><ImageIcon className="w-3 h-3" /><span className="truncate flex-1">{imageUrl}</span><button onClick={() => setImageUrl("")} className="text-destructive">usuń</button></div>}
               <div className="flex gap-2">
-                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość… (Shift+Enter = nowa linia)"
+                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość… (Shift+Enter = nowa linia, draft zapisuje się automatycznie)"
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }}}
                   className="resize-none" rows={2} />
                 <div className="flex flex-col gap-2">

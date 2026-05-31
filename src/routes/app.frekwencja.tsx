@@ -21,7 +21,7 @@ function AttendancePage() {
   const [classFilter, setClassFilter] = useState("all");
   const [sort, setSort] = useState("first_name");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: attendance = [] } = useQuery({
     queryKey: ["attendance", date],
     queryFn: async () => (await supabase.from("attendance").select("*").eq("date", date)).data ?? [],

@@ -53,7 +53,7 @@ function GradesPage() {
   const [fTo, setFTo] = useState("");
   const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: async () => (await supabase.from("grade_categories").select("*")).data ?? [] });
   const { data: subjects = [] } = useQuery({ queryKey: ["subjects"], queryFn: async () => (await supabase.from("subjects").select("*")).data ?? [] });
   const { data: grades = [] } = useQuery({

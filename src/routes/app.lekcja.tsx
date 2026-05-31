@@ -17,7 +17,7 @@ function LessonPage() {
   const { data: attendance = [] } = useQuery({ queryKey: ["att-today", today], queryFn: async () => (await supabase.from("attendance").select("subject_id").eq("date", today)).data ?? [] });
   const { data: grades = [] } = useQuery({ queryKey: ["grades-today", today], queryFn: async () => (await supabase.from("grades").select("id, subject_id").eq("date", today)).data ?? [] });
   const { data: behavior = [] } = useQuery({ queryKey: ["beh-today", today], queryFn: async () => (await supabase.from("behavior_entries").select("id, points").eq("date", today)).data ?? [] });
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("id").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("id").order("sort_order").order("journal_no")).data ?? [] });
   const { data: punishments = [] } = useQuery({ queryKey: ["punishments-due"], queryFn: async () => (await supabase.from("punishments").select("id, type, amount, amount_paid, work_hours_required, work_hours_done, paid_at, work_done_at, pay_due_date").is("paid_at", null)).data ?? [] });
   const { data: messagesIn = [] } = useQuery({ queryKey: ["msgs-in"], queryFn: async () => (await supabase.from("messages").select("id, ai_replied").eq("direction", "in").eq("ai_replied", false)).data ?? [] });
   const { data: events = [] } = useQuery({ queryKey: ["events-today", today], queryFn: async () => (await supabase.from("calendar_events").select("*").eq("event_date", today).order("event_time")).data ?? [] });

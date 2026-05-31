@@ -26,7 +26,7 @@ function BehaviorPage() {
   const [fSign, setFSign] = useState("all");
   const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: entries = [] } = useQuery({ queryKey: ["behavior"], queryFn: async () => (await supabase.from("behavior_entries").select("*, students(first_name, last_name)").order("created_at", { ascending: false }).limit(200)).data ?? [] });
 
   const filteredEntries = useMemo(() => (entries as any[])

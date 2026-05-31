@@ -303,7 +303,7 @@ export const executeAiAction = createServerFn({ method: "POST" })
         payload = { student_id: a.student_id, direction: "outgoing", subject: a.subject ?? null, body: a.body };
         break;
     }
-    const { error } = await supabase.from(table).insert(payload);
+    const { error } = await (supabase.from(table as any).insert(payload as any));
     if (error) throw new Error(error.message);
     return { ok: true };
   });

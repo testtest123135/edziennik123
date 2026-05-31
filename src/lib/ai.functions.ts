@@ -260,7 +260,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 // ---- Execute approved action ----
 const ActionInput = z.object({
   name: z.enum(["add_grade", "add_attendance", "add_behavior", "add_punishment", "add_lesson_topic", "send_message"]),
-  args: z.record(z.string(), z.any()),
+  args: z.record(z.any()),
 });
 
 export const executeAiAction = createServerFn({ method: "POST" })

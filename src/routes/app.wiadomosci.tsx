@@ -26,7 +26,7 @@ function MessagesPage() {
   const [fDir, setFDir] = useState("all");
   const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: msgs = [] } = useQuery({ queryKey: ["messages"], queryFn: async () => (await supabase.from("messages").select("*, students(first_name, last_name, parent_name)").order("created_at", { ascending: false }).limit(200)).data ?? [] });
   const filteredMsgs = (msgs as any[])
     .filter(m => fStudent === "all" || m.student_id === fStudent)

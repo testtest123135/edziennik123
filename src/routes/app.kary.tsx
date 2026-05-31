@@ -27,7 +27,7 @@ function PunishmentsPage() {
   const [fType, setFType] = useState("all");
   const [sort, setSort] = useState("date_desc");
 
-  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("first_name")).data ?? [] });
+  const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name, journal_no)").order("created_at", { ascending: false })).data ?? [] });
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);

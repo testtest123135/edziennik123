@@ -67,7 +67,11 @@ function LessonPage() {
                   <Status ok={hasGrades} label="Oceny" optional />
                   <div className="flex gap-1">
                     {!hasTopic && <Link to="/app/tematy"><Button size="sm" variant="outline">Wpisz temat</Button></Link>}
-                    {!hasAtt && <Link to="/app/frekwencja"><Button size="sm" variant="outline">Sprawdź obecność</Button></Link>}
+                    {!hasAtt && (
+                      <Link to="/app/frekwencja" search={{ date: today, subject_id: s.subject_id ?? undefined }}>
+                        <Button size="sm" variant="outline">Sprawdź obecność</Button>
+                      </Link>
+                    )}
                   </div>
                 </Card>
               );

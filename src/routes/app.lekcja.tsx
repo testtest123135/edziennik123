@@ -19,7 +19,7 @@ function LessonPage() {
   const { data: behavior = [] } = useQuery({ queryKey: ["beh-today", today], queryFn: async () => (await supabase.from("behavior_entries").select("id, points").eq("date", today)).data ?? [] });
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("id").order("sort_order").order("journal_no")).data ?? [] });
   const { data: punishments = [] } = useQuery({ queryKey: ["punishments-due"], queryFn: async () => (await supabase.from("punishments").select("id, type, amount, amount_paid, work_hours_required, work_hours_done, paid_at, work_done_at, pay_due_date").is("paid_at", null)).data ?? [] });
-  const { data: messagesIn = [] } = useQuery({ queryKey: ["msgs-in"], queryFn: async () => (await supabase.from("messages").select("id, ai_replied").eq("direction", "in").eq("ai_replied", false)).data ?? [] });
+  const { data: messagesIn = [] } = useQuery({ queryKey: ["msgs-in"], queryFn: async () => (await supabase.from("messages").select("id, ai_replied, direction").not("direction", "in", '("outgoing","ai_reply")').eq("ai_replied", false)).data ?? [] });
   const { data: events = [] } = useQuery({ queryKey: ["events-today", today], queryFn: async () => (await supabase.from("calendar_events").select("*").eq("event_date", today).order("event_time")).data ?? [] });
 
   const topicSubjects = new Set((topics as any[]).map(t => t.subject_id));
@@ -67,7 +67,11 @@ function LessonPage() {
                   <Status ok={hasGrades} label="Oceny" optional />
                   <div className="flex gap-1">
                     {!hasTopic && <Link to="/app/tematy"><Button size="sm" variant="outline">Wpisz temat</Button></Link>}
-                    {!hasAtt && <Link to="/app/frekwencja"><Button size="sm" variant="outline">Sprawdź obecność</Button></Link>}
+                    {!hasAtt && (
+                      <Link to="/app/frekwencja" search={{ date: today, subject_id: s.subject_id ?? undefined }}>
+                        <Button size="sm" variant="outline">Sprawdź obecność</Button>
+                      </Link>
+                    )}
                   </div>
                 </Card>
               );

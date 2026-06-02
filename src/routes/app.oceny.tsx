@@ -211,6 +211,10 @@ function GradesPage() {
               </div>
               <div><Label>Waga</Label><Input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} /></div>
               <div className="col-span-2"><Label>Opis (opcjonalnie)</Label><Input value={description} onChange={e => setDescription(e.target.value)} /></div>
+              <div className="col-span-2 flex items-center gap-2 p-2 rounded border bg-muted/30">
+                <Checkbox id="no-correction" checked={noCorrection} onCheckedChange={(v) => setNoCorrection(!!v)} />
+                <Label htmlFor="no-correction" className="cursor-pointer">Nie można poprawić tej oceny</Label>
+              </div>
             </div>
 
             <Tabs defaultValue="same" className="mt-2">

@@ -316,10 +316,12 @@ function GradesPage() {
                     <td className="p-3">{g.subjects?.name ?? "—"}</td>
                     <td className="p-3">{g.grade_categories?.name ?? "—"}</td>
                     <td className="p-3">{g.weight}</td>
-                    <td className="p-3 text-muted-foreground">{g.description ?? "—"}</td>
+                    <td className="p-3 text-muted-foreground">{g.description ?? "—"}{g.no_correction && <span className="ml-1 text-xs text-destructive">• bez poprawy</span>}</td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">
-                        {alreadyCorrectedOnce ? (
+                        {g.no_correction ? (
+                          <Button size="sm" variant="ghost" disabled title="Tej oceny nie można poprawić">Brak poprawy</Button>
+                        ) : alreadyCorrectedOnce ? (
                           <Button size="sm" variant="ghost" title="Pokaż historię" onClick={() => setHistoryOf(g)}><History className="w-3.5 h-3.5 mr-1" />Popraw</Button>
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => { setCorrectOf(g); setCorrectGrade(""); }}><RotateCcw className="w-3.5 h-3.5 mr-1" />Popraw</Button>

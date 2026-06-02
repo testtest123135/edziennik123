@@ -53,13 +53,15 @@ function PunishmentsPage() {
       if (typeMeta?.needsPayment) { payload.amount = Number(form.amount) || null; payload.pay_due_date = form.pay_due_date || null; payload.installments_allowed = form.installments_allowed; }
       if (typeMeta?.needsDegree) payload.degree = Number(form.degree) || null;
       if (typeMeta?.needsWork) payload.work_hours_required = Number(form.work_hours_required) || null;
+      if (typeMeta?.needsWorkDueDate) payload.work_due_date = form.work_due_date || null;
       if (typeMeta?.needsHours) payload.hours = Math.min(168, Number(form.hours) || 0);
+      payload.penalty_points = Math.max(0, Number(form.penalty_points) || 0);
       const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
     },
-    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); setOpen(false); },
+    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); },
     onError: (e: any) => toast.error(e.message),
   });
-  const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => qc.invalidateQueries({ queryKey: ["punishments"] }) });
+  const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); } });
 
   return (
     <div>

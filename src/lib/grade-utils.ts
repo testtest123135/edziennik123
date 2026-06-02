@@ -42,16 +42,18 @@ type PunishmentType = {
   needsPayment?: boolean;
   needsDegree?: boolean;
   needsWork?: boolean;
+  needsWorkDueDate?: boolean;
   needsHours?: boolean;
+  autoExpire?: boolean; // sam się usuwa po expires_at
 };
 
 export const PUNISHMENT_TYPES: readonly PunishmentType[] = [
-  { value: "pouczenie", label: "1. Pouczenie słowne", needsExpiry: true },
-  { value: "ostrzezenie_slowne", label: "2. Ostrzeżenie słowne", needsExpiry: true },
-  { value: "ostrzezenie_pisemne", label: "3. Ostrzeżenie pisemne", needsExpiry: true },
+  { value: "pouczenie", label: "1. Pouczenie słowne", needsExpiry: true, autoExpire: true },
+  { value: "ostrzezenie_slowne", label: "2. Ostrzeżenie słowne", needsExpiry: true, autoExpire: true },
+  { value: "ostrzezenie_pisemne", label: "3. Ostrzeżenie pisemne", needsExpiry: true, autoExpire: true },
   { value: "grzywna", label: "4. Kara grzywny", needsPayment: true },
   { value: "ograniczenie_praw", label: "5. Ograniczenie praw", needsDegree: true, needsExpiry: true },
-  { value: "prace_szkolne", label: "6. Prace szkolne", needsWork: true },
+  { value: "prace_szkolne", label: "6. Prace szkolne", needsWork: true, needsWorkDueDate: true },
   { value: "ograniczenie_wolnosci", label: "7. Ograniczenie wolności", needsDegree: true, needsExpiry: true },
   { value: "areszt", label: "8. Areszt tymczasowy", needsHours: true },
 ];

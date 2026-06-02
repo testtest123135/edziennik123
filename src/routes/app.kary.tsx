@@ -138,8 +138,9 @@ function PunishmentsPage() {
                     {p.expires_at && <span>Wygasa: {new Date(p.expires_at).toLocaleDateString("pl")}</span>}
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
-                    {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h</span>}
+                    {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}
                     {p.hours && <span>{p.hours} h aresztu</span>}
+                    {p.penalty_points > 0 && <span className="text-destructive font-semibold">−{p.penalty_points} pkt zach.</span>}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">

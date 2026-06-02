@@ -118,7 +118,7 @@ function GradesPage() {
       const rows = entries.map(([sid, g]) => ({
         student_id: sid, subject_id: subjectId || null, category_id: categoryId || null,
         grade: g, grade_value: gradeToValue(g), weight: Number(weight) || (cat?.weight ?? 1),
-        description: description || null, date,
+        description: description || null, date, no_correction: noCorrection,
       }));
       const { error } = await supabase.from("grades").insert(rows); if (error) throw error;
       return rows.length;

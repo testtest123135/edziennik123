@@ -20,7 +20,7 @@ export const Route = createFileRoute("/app/kary")({ component: PunishmentsPage }
 function PunishmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", hours: "" });
+  const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" });
   const [actionPunishment, setActionPunishment] = useState<any>(null);
 
   const [fStudent, setFStudent] = useState("all");
@@ -29,6 +29,14 @@ function PunishmentsPage() {
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name, journal_no)").order("created_at", { ascending: false })).data ?? [] });
+
+  // Auto-cleanup wygasłych ostrzeżeń (1-3) na każdym wejściu w moduł
+  useEffect(() => {
+    supabase.rpc("cleanup_expired_punishments").then(({ data }) => {
+      if (data && Number(data) > 0) { toast.info(`Usunięto wygasłych ostrzeżeń: ${data}`); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
 

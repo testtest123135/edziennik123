@@ -27,6 +27,7 @@ function GradesPage() {
   const [categoryId, setCategoryId] = useState("");
   const [weight, setWeight] = useState("1");
   const [description, setDescription] = useState("");
+  const [noCorrection, setNoCorrection] = useState(false);
 
   // Tryb „taka sama ocena dla wielu"
   const [grade, setGrade] = useState("");

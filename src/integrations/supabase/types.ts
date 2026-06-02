@@ -327,6 +327,7 @@ export type Database = {
           grade_value: number | null
           id: string
           is_correction: boolean
+          no_correction: boolean
           original_grade_id: string | null
           student_id: string
           subject_id: string | null
@@ -341,6 +342,7 @@ export type Database = {
           grade_value?: number | null
           id?: string
           is_correction?: boolean
+          no_correction?: boolean
           original_grade_id?: string | null
           student_id: string
           subject_id?: string | null
@@ -355,6 +357,7 @@ export type Database = {
           grade_value?: number | null
           id?: string
           is_correction?: boolean
+          no_correction?: boolean
           original_grade_id?: string | null
           student_id?: string
           subject_id?: string | null
@@ -537,10 +540,12 @@ export type Database = {
           installments_allowed: boolean | null
           paid_at: string | null
           pay_due_date: string | null
+          penalty_points: number
           reason: string
           student_id: string
           type: string
           work_done_at: string | null
+          work_due_date: string | null
           work_hours_done: number | null
           work_hours_required: number | null
         }
@@ -556,10 +561,12 @@ export type Database = {
           installments_allowed?: boolean | null
           paid_at?: string | null
           pay_due_date?: string | null
+          penalty_points?: number
           reason: string
           student_id: string
           type: string
           work_done_at?: string | null
+          work_due_date?: string | null
           work_hours_done?: number | null
           work_hours_required?: number | null
         }
@@ -575,10 +582,12 @@ export type Database = {
           installments_allowed?: boolean | null
           paid_at?: string | null
           pay_due_date?: string | null
+          penalty_points?: number
           reason?: string
           student_id?: string
           type?: string
           work_done_at?: string | null
+          work_due_date?: string | null
           work_hours_done?: number | null
           work_hours_required?: number | null
         }
@@ -722,6 +731,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_punishments: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

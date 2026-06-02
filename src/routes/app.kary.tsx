@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/app/kary")({ component: PunishmentsPage }
 function PunishmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", hours: "" });
+  const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" });
   const [actionPunishment, setActionPunishment] = useState<any>(null);
 
   const [fStudent, setFStudent] = useState("all");
@@ -29,6 +29,14 @@ function PunishmentsPage() {
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: items = [] } = useQuery({ queryKey: ["punishments"], queryFn: async () => (await supabase.from("punishments").select("*, students(first_name, last_name, journal_no)").order("created_at", { ascending: false })).data ?? [] });
+
+  // Auto-cleanup wygasłych ostrzeżeń (1-3) na każdym wejściu w moduł
+  useEffect(() => {
+    supabase.rpc("cleanup_expired_punishments").then(({ data }) => {
+      if (data && Number(data) > 0) { toast.info(`Usunięto wygasłych ostrzeżeń: ${data}`); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
 
@@ -45,13 +53,15 @@ function PunishmentsPage() {
       if (typeMeta?.needsPayment) { payload.amount = Number(form.amount) || null; payload.pay_due_date = form.pay_due_date || null; payload.installments_allowed = form.installments_allowed; }
       if (typeMeta?.needsDegree) payload.degree = Number(form.degree) || null;
       if (typeMeta?.needsWork) payload.work_hours_required = Number(form.work_hours_required) || null;
+      if (typeMeta?.needsWorkDueDate) payload.work_due_date = form.work_due_date || null;
       if (typeMeta?.needsHours) payload.hours = Math.min(168, Number(form.hours) || 0);
+      payload.penalty_points = Math.max(0, Number(form.penalty_points) || 0);
       const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
     },
-    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); setOpen(false); },
+    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); },
     onError: (e: any) => toast.error(e.message),
   });
-  const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => qc.invalidateQueries({ queryKey: ["punishments"] }) });
+  const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); } });
 
   return (
     <div>
@@ -87,7 +97,9 @@ function PunishmentsPage() {
               )}
               {typeMeta?.needsDegree && <div><Label>Stopień (1–20)</Label><Input type="number" min="1" max="20" value={form.degree} onChange={e => setForm({...form, degree: e.target.value})} /></div>}
               {typeMeta?.needsWork && <div><Label>Wymagane godziny pracy</Label><Input type="number" step="0.5" value={form.work_hours_required} onChange={e => setForm({...form, work_hours_required: e.target.value})} /></div>}
+              {typeMeta?.needsWorkDueDate && <div><Label>Termin wykonania pracy</Label><Input type="date" value={form.work_due_date} onChange={e => setForm({...form, work_due_date: e.target.value})} /></div>}
               {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /></div>}
+              <div><Label>Punkty minusowe z zachowania</Label><Input type="number" min="0" placeholder="0 = brak" value={form.penalty_points} onChange={e => setForm({...form, penalty_points: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Tyle punktów odejmie od zachowania ucznia. Wróci, gdy karę usuniesz.</p></div>
               <Button onClick={() => add.mutate()} disabled={!form.student_id || !form.reason} className="w-full">Nałóż karę</Button>
             </div>
           </DialogContent>
@@ -126,8 +138,9 @@ function PunishmentsPage() {
                     {p.expires_at && <span>Wygasa: {new Date(p.expires_at).toLocaleDateString("pl")}</span>}
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
-                    {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h</span>}
+                    {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}
                     {p.hours && <span>{p.hours} h aresztu</span>}
+                    {p.penalty_points > 0 && <span className="text-destructive font-semibold">−{p.penalty_points} pkt zach.</span>}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">

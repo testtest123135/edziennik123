@@ -27,6 +27,7 @@ function GradesPage() {
   const [categoryId, setCategoryId] = useState("");
   const [weight, setWeight] = useState("1");
   const [description, setDescription] = useState("");
+  const [noCorrection, setNoCorrection] = useState(false);
 
   // Tryb „taka sama ocena dla wielu"
   const [grade, setGrade] = useState("");
@@ -89,7 +90,7 @@ function GradesPage() {
   }, [grades, replacedIds, fStudent, fSubject, fCategory, fFrom, fTo, sort]);
 
   const resetForm = () => {
-    setGrade(""); setDescription(""); setSelected([]); setPerStudent({});
+    setGrade(""); setDescription(""); setSelected([]); setPerStudent({}); setNoCorrection(false);
   };
 
   const addSame = useMutation({
@@ -100,7 +101,7 @@ function GradesPage() {
       const rows = selected.map(sid => ({
         student_id: sid, subject_id: subjectId || null, category_id: categoryId || null,
         grade, grade_value: gradeToValue(grade), weight: Number(weight) || (cat?.weight ?? 1),
-        description: description || null, date,
+        description: description || null, date, no_correction: noCorrection,
       }));
       const { error } = await supabase.from("grades").insert(rows); if (error) throw error;
       return rows.length;
@@ -117,7 +118,7 @@ function GradesPage() {
       const rows = entries.map(([sid, g]) => ({
         student_id: sid, subject_id: subjectId || null, category_id: categoryId || null,
         grade: g, grade_value: gradeToValue(g), weight: Number(weight) || (cat?.weight ?? 1),
-        description: description || null, date,
+        description: description || null, date, no_correction: noCorrection,
       }));
       const { error } = await supabase.from("grades").insert(rows); if (error) throw error;
       return rows.length;
@@ -152,6 +153,7 @@ function GradesPage() {
       // Znajdź źródło łańcucha (jeśli klikany element jest już korektą, „cofnij" do oryginału)
       // Tu zezwalamy tylko jednorazowo: jeśli ten id jest już oryginałem czyjejś korekty → blokujemy
       if (replacedIds.has(correctOf.id)) throw new Error("Ta ocena była już raz poprawiana.");
+      if (correctOf.no_correction) throw new Error("Ta ocena jest oznaczona jako nie do poprawy.");
       const { error } = await supabase.from("grades").insert({
         student_id: correctOf.student_id,
         subject_id: correctOf.subject_id,
@@ -210,6 +212,10 @@ function GradesPage() {
               </div>
               <div><Label>Waga</Label><Input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} /></div>
               <div className="col-span-2"><Label>Opis (opcjonalnie)</Label><Input value={description} onChange={e => setDescription(e.target.value)} /></div>
+              <div className="col-span-2 flex items-center gap-2 p-2 rounded border bg-muted/30">
+                <Checkbox id="no-correction" checked={noCorrection} onCheckedChange={(v) => setNoCorrection(!!v)} />
+                <Label htmlFor="no-correction" className="cursor-pointer">Nie można poprawić tej oceny</Label>
+              </div>
             </div>
 
             <Tabs defaultValue="same" className="mt-2">
@@ -311,10 +317,12 @@ function GradesPage() {
                     <td className="p-3">{g.subjects?.name ?? "—"}</td>
                     <td className="p-3">{g.grade_categories?.name ?? "—"}</td>
                     <td className="p-3">{g.weight}</td>
-                    <td className="p-3 text-muted-foreground">{g.description ?? "—"}</td>
+                    <td className="p-3 text-muted-foreground">{g.description ?? "—"}{g.no_correction && <span className="ml-1 text-xs text-destructive">• bez poprawy</span>}</td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">
-                        {alreadyCorrectedOnce ? (
+                        {g.no_correction ? (
+                          <Button size="sm" variant="ghost" disabled title="Tej oceny nie można poprawić">Brak poprawy</Button>
+                        ) : alreadyCorrectedOnce ? (
                           <Button size="sm" variant="ghost" title="Pokaż historię" onClick={() => setHistoryOf(g)}><History className="w-3.5 h-3.5 mr-1" />Popraw</Button>
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => { setCorrectOf(g); setCorrectGrade(""); }}><RotateCcw className="w-3.5 h-3.5 mr-1" />Popraw</Button>

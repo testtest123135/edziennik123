@@ -153,6 +153,7 @@ function GradesPage() {
       // Znajdź źródło łańcucha (jeśli klikany element jest już korektą, „cofnij" do oryginału)
       // Tu zezwalamy tylko jednorazowo: jeśli ten id jest już oryginałem czyjejś korekty → blokujemy
       if (replacedIds.has(correctOf.id)) throw new Error("Ta ocena była już raz poprawiana.");
+      if (correctOf.no_correction) throw new Error("Ta ocena jest oznaczona jako nie do poprawy.");
       const { error } = await supabase.from("grades").insert({
         student_id: correctOf.student_id,
         subject_id: correctOf.subject_id,

@@ -189,7 +189,7 @@ function PunishmentsPage() {
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
                   {p.details && <p className="text-xs text-muted-foreground mt-1">{p.details}</p>}
                   <div className="flex gap-4 text-xs text-muted-foreground mt-2 flex-wrap">
-                    {p.expires_at && <span>Wygasa: {new Date(p.expires_at).toLocaleDateString("pl")}</span>}
+                    {p.expires_at && (() => { const d = new Date(p.expires_at); const expired = d < new Date(); return <span className={expired ? "text-destructive font-medium" : ""}>Wygasa: {d.toLocaleString("pl", { dateStyle: "short", timeStyle: "short" })}{expired ? " (wygasła)" : ""}</span>; })()}
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
                     {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}

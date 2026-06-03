@@ -67,6 +67,7 @@ export function fullName(s?: { first_name?: string | null; last_name?: string | 
 
 export function attendancePct(rows: { status: string }[]): number {
   if (!rows.length) return 0;
-  const present = rows.filter(r => ["obecny", "spozniony", "usprawiedliwiony", "wycieczka"].includes(r.status)).length;
+  // Usprawiedliwiony NIE liczy się jako obecność (uczeń nie był w szkole).
+  const present = rows.filter(r => ["obecny", "spozniony", "wycieczka"].includes(r.status)).length;
   return Math.round((present / rows.length) * 100);
 }

@@ -25,6 +25,7 @@ function PunishmentsPage() {
 
   const [fStudent, setFStudent] = useState("all");
   const [fType, setFType] = useState("all");
+  const [fActive, setFActive] = useState("all"); // all | active | done
   const [sort, setSort] = useState("date_desc");
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
@@ -40,11 +41,32 @@ function PunishmentsPage() {
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
 
+  const isActive = (p: any) => {
+    const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;
+    const workedFully = p.work_hours_required && (p.work_hours_done ?? 0) >= p.work_hours_required;
+    const expired = p.expires_at && new Date(p.expires_at) < new Date();
+    if (paidFully || workedFully || expired) return false;
+    return true;
+  };
+
+  const activeByStudent = useMemo(() => {
+    const map = new Map<string, { student: any; count: number }>();
+    for (const p of items as any[]) {
+      if (!isActive(p)) continue;
+      const key = p.student_id;
+      const cur = map.get(key) ?? { student: p.students, count: 0 };
+      cur.count += 1;
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => (a.student?.journal_no ?? 0) - (b.student?.journal_no ?? 0));
+  }, [items]);
+
   const filtered = useMemo(() => (items as any[])
     .filter(p => fStudent === "all" || p.student_id === fStudent)
     .filter(p => fType === "all" || p.type === fType)
+    .filter(p => fActive === "all" || (fActive === "active" ? isActive(p) : !isActive(p)))
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
-    [items, fStudent, fType, sort]);
+    [items, fStudent, fType, fActive, sort]);
 
   const add = useMutation({
     mutationFn: async () => {
@@ -105,13 +127,45 @@ function PunishmentsPage() {
           </DialogContent>
         </Dialog>
       } />
-      <div className="p-8 space-y-3">
-        <Card className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-3">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h2 className="font-semibold text-sm">Uczniowie z aktywnymi karami ({activeByStudent.length})</h2>
+            {activeByStudent.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => setFActive("active")}>Pokaż wszystkie aktywne</Button>
+            )}
+          </div>
+          {activeByStudent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nikt obecnie nie ma aktywnej kary. 🎉</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {activeByStudent.map(({ student, count }) => (
+                <button
+                  key={student?.id}
+                  onClick={() => { setFStudent(student.id); setFActive("active"); }}
+                  className="text-xs px-2.5 py-1.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 font-medium"
+                >
+                  {student?.journal_no}. {student?.first_name} {student?.last_name}
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
           <div><Label className="text-xs">Uczeń</Label>
             <Select value={fStudent} onValueChange={setFStudent}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszyscy</SelectItem>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent></Select>
           </div>
           <div><Label className="text-xs">Rodzaj kary</Label>
             <Select value={fType} onValueChange={setFType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszystkie</SelectItem>{PUNISHMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Status</Label>
+            <Select value={fActive} onValueChange={setFActive}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="all">Wszystkie</SelectItem>
+              <SelectItem value="active">Tylko aktywne</SelectItem>
+              <SelectItem value="done">Wykonane / wygasłe</SelectItem>
+            </SelectContent></Select>
           </div>
           <div><Label className="text-xs">Sortuj</Label>
             <Select value={sort} onValueChange={setSort}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="date_desc">Data ↓</SelectItem><SelectItem value="date_asc">Data ↑</SelectItem></SelectContent></Select>
@@ -135,7 +189,7 @@ function PunishmentsPage() {
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
                   {p.details && <p className="text-xs text-muted-foreground mt-1">{p.details}</p>}
                   <div className="flex gap-4 text-xs text-muted-foreground mt-2 flex-wrap">
-                    {p.expires_at && <span>Wygasa: {new Date(p.expires_at).toLocaleDateString("pl")}</span>}
+                    {p.expires_at && (() => { const d = new Date(p.expires_at); const expired = d < new Date(); return <span className={expired ? "text-destructive font-medium" : ""}>Wygasa: {d.toLocaleString("pl", { dateStyle: "short", timeStyle: "short" })}{expired ? " (wygasła)" : ""}</span>; })()}
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
                     {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}

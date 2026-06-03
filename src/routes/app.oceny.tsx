@@ -248,12 +248,12 @@ function GradesPage() {
               </TabsContent>
 
               <TabsContent value="per" className="space-y-3">
-                <p className="text-xs text-muted-foreground">Wpisz indywidualną ocenę przy uczniach. Puste pola = bez oceny.</p>
+                <p className="text-xs text-muted-foreground">Wpisz indywidualną ocenę przy uczniach. Puste pola = bez oceny. Zaznacz „bez popr.", aby konkretnej oceny nie dało się poprawić.</p>
                 <div className="border rounded-md max-h-72 overflow-y-auto p-2 space-y-1">
                   {students.map(s => (
                     <div key={s.id} className="flex items-center gap-2 px-2 py-1 rounded text-sm">
                       <span className="font-mono text-xs text-muted-foreground w-6">{s.journal_no ?? "—"}</span>
-                      <span className="flex-1">{s.first_name} {s.last_name}</span>
+                      <span className="flex-1 truncate">{s.first_name} {s.last_name}</span>
                       <Select value={perStudent[s.id] ?? ""} onValueChange={(v) => setPerStudent({ ...perStudent, [s.id]: v })}>
                         <SelectTrigger className="w-24"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
@@ -261,6 +261,10 @@ function GradesPage() {
                           {GRADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <label className="flex items-center gap-1 text-xs cursor-pointer select-none" title="Brak poprawy">
+                        <Checkbox checked={!!perNoCorr[s.id]} onCheckedChange={(v) => setPerNoCorr({ ...perNoCorr, [s.id]: !!v })} />
+                        <span className="text-muted-foreground">bez popr.</span>
+                      </label>
                     </div>
                   ))}
                 </div>

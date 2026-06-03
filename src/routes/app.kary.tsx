@@ -127,13 +127,45 @@ function PunishmentsPage() {
           </DialogContent>
         </Dialog>
       } />
-      <div className="p-8 space-y-3">
-        <Card className="p-3 grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-3">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h2 className="font-semibold text-sm">Uczniowie z aktywnymi karami ({activeByStudent.length})</h2>
+            {activeByStudent.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => setFActive("active")}>Pokaż wszystkie aktywne</Button>
+            )}
+          </div>
+          {activeByStudent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nikt obecnie nie ma aktywnej kary. 🎉</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {activeByStudent.map(({ student, count }) => (
+                <button
+                  key={student?.id}
+                  onClick={() => { setFStudent(student.id); setFActive("active"); }}
+                  className="text-xs px-2.5 py-1.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 font-medium"
+                >
+                  {student?.journal_no}. {student?.first_name} {student?.last_name}
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
           <div><Label className="text-xs">Uczeń</Label>
             <Select value={fStudent} onValueChange={setFStudent}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszyscy</SelectItem>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent></Select>
           </div>
           <div><Label className="text-xs">Rodzaj kary</Label>
             <Select value={fType} onValueChange={setFType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszystkie</SelectItem>{PUNISHMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div><Label className="text-xs">Status</Label>
+            <Select value={fActive} onValueChange={setFActive}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="all">Wszystkie</SelectItem>
+              <SelectItem value="active">Tylko aktywne</SelectItem>
+              <SelectItem value="done">Wykonane / wygasłe</SelectItem>
+            </SelectContent></Select>
           </div>
           <div><Label className="text-xs">Sortuj</Label>
             <Select value={sort} onValueChange={setSort}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="date_desc">Data ↓</SelectItem><SelectItem value="date_asc">Data ↑</SelectItem></SelectContent></Select>

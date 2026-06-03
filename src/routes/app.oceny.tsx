@@ -35,6 +35,7 @@ function GradesPage() {
 
   // Tryb „inna ocena dla każdego ucznia"
   const [perStudent, setPerStudent] = useState<Record<string, string>>({});
+  const [perNoCorr, setPerNoCorr] = useState<Record<string, boolean>>({});
 
   // Edycja
   const [editing, setEditing] = useState<any>(null);

@@ -91,7 +91,7 @@ function GradesPage() {
   }, [grades, replacedIds, fStudent, fSubject, fCategory, fFrom, fTo, sort]);
 
   const resetForm = () => {
-    setGrade(""); setDescription(""); setSelected([]); setPerStudent({}); setNoCorrection(false);
+    setGrade(""); setDescription(""); setSelected([]); setPerStudent({}); setPerNoCorr({}); setNoCorrection(false);
   };
 
   const addSame = useMutation({

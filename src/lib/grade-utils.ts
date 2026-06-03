@@ -65,9 +65,14 @@ export function fullName(s?: { first_name?: string | null; last_name?: string | 
   return `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim();
 }
 
+export function isPresentAttendanceStatus(status?: string | null): boolean {
+  const normalized = (status ?? "").trim().toLowerCase();
+  return ["obecny", "spozniony", "spóźniony", "wycieczka"].includes(normalized);
+}
+
 export function attendancePct(rows: { status: string }[]): number {
   if (!rows.length) return 0;
   // Usprawiedliwiony NIE liczy się jako obecność (uczeń nie był w szkole).
-  const present = rows.filter(r => ["obecny", "spozniony", "wycieczka"].includes(r.status)).length;
+  const present = rows.filter(r => isPresentAttendanceStatus(r.status)).length;
   return Math.round((present / rows.length) * 100);
 }

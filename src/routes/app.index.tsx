@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Users, GraduationCap, Heart, CalendarCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { isPresentAttendanceStatus } from "@/lib/grade-utils";
 
 export const Route = createFileRoute("/app/")({ component: Dashboard });
 
@@ -16,7 +17,7 @@ function Dashboard() {
         supabase.from("students").select("id, behavior_points"),
         supabase.from("grades").select("id"),
         supabase.from("calendar_events").select("id, title, event_date").gte("event_date", new Date().toISOString().slice(0,10)).order("event_date").limit(5),
-        supabase.from("attendance").select("id").eq("date", new Date().toISOString().slice(0, 10)),
+        supabase.from("attendance").select("status").eq("date", new Date().toISOString().slice(0, 10)),
       ]);
       const avgBehavior = students.data?.length
         ? Math.round(students.data.reduce((a, s) => a + (s.behavior_points || 0), 0) / students.data.length)
@@ -25,7 +26,7 @@ function Dashboard() {
         studentsCount: students.data?.length ?? 0,
         gradesCount: grades.data?.length ?? 0,
         avgBehavior,
-        todayAttendance: today.data?.length ?? 0,
+        todayAttendance: today.data?.filter((row) => isPresentAttendanceStatus(row.status)).length ?? 0,
         upcoming: events.data ?? [],
       };
     },

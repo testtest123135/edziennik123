@@ -41,11 +41,32 @@ function PunishmentsPage() {
 
   const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
 
+  const isActive = (p: any) => {
+    const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;
+    const workedFully = p.work_hours_required && (p.work_hours_done ?? 0) >= p.work_hours_required;
+    const expired = p.expires_at && new Date(p.expires_at) < new Date();
+    if (paidFully || workedFully || expired) return false;
+    return true;
+  };
+
+  const activeByStudent = useMemo(() => {
+    const map = new Map<string, { student: any; count: number }>();
+    for (const p of items as any[]) {
+      if (!isActive(p)) continue;
+      const key = p.student_id;
+      const cur = map.get(key) ?? { student: p.students, count: 0 };
+      cur.count += 1;
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => (a.student?.journal_no ?? 0) - (b.student?.journal_no ?? 0));
+  }, [items]);
+
   const filtered = useMemo(() => (items as any[])
     .filter(p => fStudent === "all" || p.student_id === fStudent)
     .filter(p => fType === "all" || p.type === fType)
+    .filter(p => fActive === "all" || (fActive === "active" ? isActive(p) : !isActive(p)))
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
-    [items, fStudent, fType, sort]);
+    [items, fStudent, fType, fActive, sort]);
 
   const add = useMutation({
     mutationFn: async () => {

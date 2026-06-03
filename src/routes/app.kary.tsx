@@ -25,6 +25,7 @@ function PunishmentsPage() {
 
   const [fStudent, setFStudent] = useState("all");
   const [fType, setFType] = useState("all");
+  const [fActive, setFActive] = useState("all"); // all | active | done
   const [sort, setSort] = useState("date_desc");
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });

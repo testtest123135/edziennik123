@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Minus, Trash2 } from "lucide-react";
+import { Plus, Minus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/zachowanie")({ component: BehaviorPage });
@@ -21,6 +21,10 @@ function BehaviorPage() {
   const [points, setPoints] = useState("5");
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+
+  const [editing, setEditing] = useState<any>(null);
+  const [editPoints, setEditPoints] = useState("");
+  const [editReason, setEditReason] = useState("");
 
   const [fStudent, setFStudent] = useState("all");
   const [fSign, setFSign] = useState("all");
@@ -54,6 +58,15 @@ function BehaviorPage() {
     },
     onSuccess: () => { toast.success("Punkty dodane"); qc.invalidateQueries({ queryKey: ["behavior"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setSelected([]); setReason(""); },
     onError: (e: any) => { if (e.message !== "Anulowano") toast.error(e.message); },
+  });
+  const saveEdit = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase.from("behavior_entries").update({ points: Number(editPoints) || 0, reason: editReason || null }).eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Zapisano"); qc.invalidateQueries({ queryKey: ["behavior"] }); qc.invalidateQueries({ queryKey: ["students"] }); setEditing(null); },
+    onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({
     mutationFn: async (id: string) => { await supabase.from("behavior_entries").delete().eq("id", id); },
@@ -92,7 +105,7 @@ function BehaviorPage() {
           </DialogContent>
         </Dialog>
       } />
-      <div className="p-8 space-y-4">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4">
         <Card className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 items-end">
           <div><Label className="text-xs">Uczeń</Label>
             <Select value={fStudent} onValueChange={setFStudent}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Wszyscy</SelectItem>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent></Select>
@@ -123,7 +136,8 @@ function BehaviorPage() {
                 <div key={e.id} className="flex items-center gap-2 text-sm py-1.5 border-b border-border last:border-0">
                   <span className={`font-mono font-bold ${e.points > 0 ? "text-success" : "text-destructive"}`}>{e.points > 0 ? "+" : ""}{e.points}</span>
                   <span className="flex-1">{e.students?.first_name} {e.students?.last_name}</span>
-                  <span className="text-muted-foreground text-xs">{e.reason ?? "—"}</span>
+                  <span className="text-muted-foreground text-xs truncate max-w-[40%]">{e.reason ?? "—"}</span>
+                  <button onClick={() => { setEditing(e); setEditPoints(String(e.points)); setEditReason(e.reason ?? ""); }}><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
                   <button onClick={() => del.mutate(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive/70" /></button>
                 </div>
               ))}
@@ -131,6 +145,18 @@ function BehaviorPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edytuj wpis</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">{editing?.students?.first_name} {editing?.students?.last_name}</div>
+            <div><Label>Punkty (np. -5 lub 10)</Label><Input type="number" value={editPoints} onChange={e => setEditPoints(e.target.value)} /></div>
+            <div><Label>Powód</Label><Input value={editReason} onChange={e => setEditReason(e.target.value)} /></div>
+            <Button onClick={() => saveEdit.mutate()} className="w-full">Zapisz</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

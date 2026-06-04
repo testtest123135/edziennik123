@@ -71,22 +71,42 @@ function PunishmentsPage() {
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
     [items, fStudent, fType, fActive, sort]);
 
-  const add = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
       const payload: any = { student_id: form.student_id, type: form.type, reason: form.reason, details: form.details || null };
-      if (form.expires_at) payload.expires_at = new Date(form.expires_at).toISOString();
-      if (typeMeta?.needsPayment) { payload.amount = Number(form.amount) || null; payload.pay_due_date = form.pay_due_date || null; payload.installments_allowed = form.installments_allowed; }
-      if (typeMeta?.needsDegree) payload.degree = Number(form.degree) || null;
-      if (typeMeta?.needsWork) payload.work_hours_required = Number(form.work_hours_required) || null;
-      if (typeMeta?.needsWorkDueDate) payload.work_due_date = form.work_due_date || null;
-      if (typeMeta?.needsHours) payload.hours = Math.min(168, Number(form.hours) || 0);
+      payload.expires_at = form.expires_at ? new Date(form.expires_at).toISOString() : null;
+      payload.amount = typeMeta?.needsPayment ? (Number(form.amount) || null) : null;
+      payload.pay_due_date = typeMeta?.needsPayment ? (form.pay_due_date || null) : null;
+      payload.installments_allowed = typeMeta?.needsPayment ? !!form.installments_allowed : false;
+      payload.degree = typeMeta?.needsDegree ? (Number(form.degree) || null) : null;
+      payload.work_hours_required = typeMeta?.needsWork ? (Number(form.work_hours_required) || null) : null;
+      payload.work_due_date = typeMeta?.needsWorkDueDate ? (form.work_due_date || null) : null;
+      payload.hours = typeMeta?.needsHours ? Math.min(168, Number(form.hours) || 0) : null;
       payload.penalty_points = Math.max(0, Number(form.penalty_points) || 0);
-      const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
+      if (editing) {
+        const { error } = await supabase.from("punishments").update(payload).eq("id", editing.id); if (error) throw error;
+      } else {
+        if (typeMeta?.needsHours) payload.arrest_started_at = new Date().toISOString();
+        const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); },
+    onSuccess: () => { toast.success(editing ? "Zaktualizowano" : "Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setEditing(null); setForm(emptyForm); },
     onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); } });
+
+  const openEdit = (p: any) => {
+    setEditing(p);
+    setForm({
+      student_id: p.student_id, type: p.type, reason: p.reason ?? "", details: p.details ?? "",
+      expires_at: p.expires_at ? new Date(p.expires_at).toISOString().slice(0, 16) : "",
+      amount: p.amount ?? "", pay_due_date: p.pay_due_date ?? "", installments_allowed: !!p.installments_allowed,
+      degree: p.degree ?? "", work_hours_required: p.work_hours_required ?? "", work_due_date: p.work_due_date ?? "",
+      hours: p.hours ?? "", penalty_points: p.penalty_points ?? "",
+    });
+    setOpen(true);
+  };
+  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
 
   return (
     <div>

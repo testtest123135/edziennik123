@@ -76,3 +76,19 @@ export function attendancePct(rows: { status: string }[]): number {
   const present = rows.filter(r => isPresentAttendanceStatus(r.status)).length;
   return Math.round((present / rows.length) * 100);
 }
+
+/** Areszt wygasa po `hours` od `arrest_started_at`. Zostaje na koncie, ale jest nieaktywny. */
+export function arrestExpired(p: { type?: string | null; hours?: number | null; arrest_started_at?: string | null; created_at?: string | null }): boolean {
+  if (p.type !== "areszt" || !p.hours) return false;
+  const start = p.arrest_started_at ?? p.created_at;
+  if (!start) return false;
+  const end = new Date(new Date(start).getTime() + Number(p.hours) * 3_600_000);
+  return end < new Date();
+}
+
+export function arrestEndsAt(p: { hours?: number | null; arrest_started_at?: string | null; created_at?: string | null }): Date | null {
+  if (!p.hours) return null;
+  const start = p.arrest_started_at ?? p.created_at;
+  if (!start) return null;
+  return new Date(new Date(start).getTime() + Number(p.hours) * 3_600_000);
+}

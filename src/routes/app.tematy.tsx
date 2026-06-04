@@ -54,7 +54,7 @@ function TopicsPage() {
       <PageHeader title="Tematy zajęć" description="Zapis tematów dla konkretnego dnia i przedmiotu." />
       <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-4 space-y-3">
-          <h3 className="font-semibold">Nowy temat</h3>
+          <h3 className="font-semibold">{editing ? "Edytuj temat" : "Nowy temat"}</h3>
           <div><Label>Data</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
           <div><Label>Przedmiot</Label>
             <Select value={subjectId} onValueChange={setSubjectId}><SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger><SelectContent>{subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>

@@ -37,11 +37,17 @@ function TopicsPage() {
     .sort((a, b) => sort === "date_asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)),
     [topics, fSubject, fFrom, fTo, sort, search]);
 
-  const add = useMutation({
-    mutationFn: async () => { const { error } = await supabase.from("lesson_topics").insert({ date, subject_id: subjectId || null, topic, notes: notes || null }); if (error) throw error; },
-    onSuccess: () => { toast.success("Dodano"); qc.invalidateQueries({ queryKey: ["topics"] }); setTopic(""); setNotes(""); },
+  const [editing, setEditing] = useState<any>(null);
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = { date, subject_id: subjectId || null, topic, notes: notes || null };
+      if (editing) { const { error } = await supabase.from("lesson_topics").update(payload).eq("id", editing.id); if (error) throw error; }
+      else { const { error } = await supabase.from("lesson_topics").insert(payload); if (error) throw error; }
+    },
+    onSuccess: () => { toast.success(editing ? "Zapisano" : "Dodano"); qc.invalidateQueries({ queryKey: ["topics"] }); setTopic(""); setNotes(""); setEditing(null); },
   });
   const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("lesson_topics").delete().eq("id", id); }, onSuccess: () => qc.invalidateQueries({ queryKey: ["topics"] }) });
+  const openEdit = (t: any) => { setEditing(t); setDate(t.date); setSubjectId(t.subject_id ?? ""); setTopic(t.topic); setNotes(t.notes ?? ""); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   return (
     <div>

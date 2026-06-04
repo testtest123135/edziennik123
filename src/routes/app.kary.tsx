@@ -207,6 +207,7 @@ function PunishmentsPage() {
                     <h3 className="font-semibold text-sm">{meta?.label ?? p.type}</h3>
                     <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.journal_no}. {p.students?.first_name} {p.students?.last_name}</span>
                     {(paidFully || workedFully) && <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Wykonana</span>}
+                    {arrestExpired(p) && <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">Areszt zakończony</span>}
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(p.created_at).toLocaleString("pl")}</span>
                   </div>
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
@@ -216,7 +217,7 @@ function PunishmentsPage() {
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
                     {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}
-                    {p.hours && <span>{p.hours} h aresztu</span>}
+                    {p.hours && (() => { const end = arrestEndsAt(p); return <span>{p.hours} h aresztu{end ? ` • do ${end.toLocaleString("pl", { dateStyle: "short", timeStyle: "short" })}` : ""}{arrestExpired(p) ? " (zakończony)" : ""}</span>; })()}
                     {p.penalty_points > 0 && <span className="text-destructive font-semibold">−{p.penalty_points} pkt zach.</span>}
                   </div>
                 </div>
@@ -226,6 +227,7 @@ function PunishmentsPage() {
                       <Wallet className="w-3.5 h-3.5 mr-1" />{meta?.needsPayment ? "Opłać" : "Wpisz wykonanie"}
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>Edytuj</Button>
                   <button onClick={() => { if (window.confirm("Usunąć karę?")) del.mutate(p.id); }}><Trash2 className="w-4 h-4 text-destructive" /></button>
                 </div>
               </div>

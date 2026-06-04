@@ -531,6 +531,7 @@ export type Database = {
         Row: {
           amount: number | null
           amount_paid: number | null
+          arrest_started_at: string | null
           created_at: string
           degree: number | null
           details: string | null
@@ -552,6 +553,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           amount_paid?: number | null
+          arrest_started_at?: string | null
           created_at?: string
           degree?: number | null
           details?: string | null
@@ -573,6 +575,7 @@ export type Database = {
         Update: {
           amount?: number | null
           amount_paid?: number | null
+          arrest_started_at?: string | null
           created_at?: string
           degree?: number | null
           details?: string | null
@@ -644,42 +647,72 @@ export type Database = {
       }
       students: {
         Row: {
+          address: string | null
           behavior_points: number
           class_name: string | null
           created_at: string
+          date_of_birth: string | null
           first_name: string
+          gender: string | null
+          health_notes: string | null
+          hobbies: string | null
           id: string
           journal_no: number | null
           last_name: string
           notes: string | null
           parent_contact: string | null
+          parent_email: string | null
           parent_name: string | null
+          parent_phone: string | null
+          pesel: string | null
+          second_parent_contact: string | null
+          second_parent_name: string | null
           sort_order: number
         }
         Insert: {
+          address?: string | null
           behavior_points?: number
           class_name?: string | null
           created_at?: string
+          date_of_birth?: string | null
           first_name: string
+          gender?: string | null
+          health_notes?: string | null
+          hobbies?: string | null
           id?: string
           journal_no?: number | null
           last_name: string
           notes?: string | null
           parent_contact?: string | null
+          parent_email?: string | null
           parent_name?: string | null
+          parent_phone?: string | null
+          pesel?: string | null
+          second_parent_contact?: string | null
+          second_parent_name?: string | null
           sort_order?: number
         }
         Update: {
+          address?: string | null
           behavior_points?: number
           class_name?: string | null
           created_at?: string
+          date_of_birth?: string | null
           first_name?: string
+          gender?: string | null
+          health_notes?: string | null
+          hobbies?: string | null
           id?: string
           journal_no?: number | null
           last_name?: string
           notes?: string | null
           parent_contact?: string | null
+          parent_email?: string | null
           parent_name?: string | null
+          parent_phone?: string | null
+          pesel?: string | null
+          second_parent_contact?: string | null
+          second_parent_name?: string | null
           sort_order?: number
         }
         Relationships: []

@@ -47,7 +47,8 @@ function PunishmentsPage() {
     const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;
     const workedFully = p.work_hours_required && (p.work_hours_done ?? 0) >= p.work_hours_required;
     const expired = p.expires_at && new Date(p.expires_at) < new Date();
-    if (paidFully || workedFully || expired) return false;
+    const arrestDone = arrestExpired(p);
+    if (paidFully || workedFully || expired || arrestDone) return false;
     return true;
   };
 

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PUNISHMENT_TYPES } from "@/lib/grade-utils";
+import { PUNISHMENT_TYPES, arrestExpired, arrestEndsAt } from "@/lib/grade-utils";
 import { Plus, Trash2, Gavel, Wallet, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,7 +20,9 @@ export const Route = createFileRoute("/app/kary")({ component: PunishmentsPage }
 function PunishmentsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" });
+  const [editing, setEditing] = useState<any>(null);
+  const emptyForm = { student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" };
+  const [form, setForm] = useState<any>(emptyForm);
   const [actionPunishment, setActionPunishment] = useState<any>(null);
 
   const [fStudent, setFStudent] = useState("all");
@@ -45,7 +47,8 @@ function PunishmentsPage() {
     const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;
     const workedFully = p.work_hours_required && (p.work_hours_done ?? 0) >= p.work_hours_required;
     const expired = p.expires_at && new Date(p.expires_at) < new Date();
-    if (paidFully || workedFully || expired) return false;
+    const arrestDone = arrestExpired(p);
+    if (paidFully || workedFully || expired || arrestDone) return false;
     return true;
   };
 
@@ -68,30 +71,50 @@ function PunishmentsPage() {
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
     [items, fStudent, fType, fActive, sort]);
 
-  const add = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
       const payload: any = { student_id: form.student_id, type: form.type, reason: form.reason, details: form.details || null };
-      if (form.expires_at) payload.expires_at = new Date(form.expires_at).toISOString();
-      if (typeMeta?.needsPayment) { payload.amount = Number(form.amount) || null; payload.pay_due_date = form.pay_due_date || null; payload.installments_allowed = form.installments_allowed; }
-      if (typeMeta?.needsDegree) payload.degree = Number(form.degree) || null;
-      if (typeMeta?.needsWork) payload.work_hours_required = Number(form.work_hours_required) || null;
-      if (typeMeta?.needsWorkDueDate) payload.work_due_date = form.work_due_date || null;
-      if (typeMeta?.needsHours) payload.hours = Math.min(168, Number(form.hours) || 0);
+      payload.expires_at = form.expires_at ? new Date(form.expires_at).toISOString() : null;
+      payload.amount = typeMeta?.needsPayment ? (Number(form.amount) || null) : null;
+      payload.pay_due_date = typeMeta?.needsPayment ? (form.pay_due_date || null) : null;
+      payload.installments_allowed = typeMeta?.needsPayment ? !!form.installments_allowed : false;
+      payload.degree = typeMeta?.needsDegree ? (Number(form.degree) || null) : null;
+      payload.work_hours_required = typeMeta?.needsWork ? (Number(form.work_hours_required) || null) : null;
+      payload.work_due_date = typeMeta?.needsWorkDueDate ? (form.work_due_date || null) : null;
+      payload.hours = typeMeta?.needsHours ? Math.min(168, Number(form.hours) || 0) : null;
       payload.penalty_points = Math.max(0, Number(form.penalty_points) || 0);
-      const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
+      if (editing) {
+        const { error } = await supabase.from("punishments").update(payload).eq("id", editing.id); if (error) throw error;
+      } else {
+        if (typeMeta?.needsHours) payload.arrest_started_at = new Date().toISOString();
+        const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); },
+    onSuccess: () => { toast.success(editing ? "Zaktualizowano" : "Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setEditing(null); setForm(emptyForm); },
     onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); } });
 
+  const openEdit = (p: any) => {
+    setEditing(p);
+    setForm({
+      student_id: p.student_id, type: p.type, reason: p.reason ?? "", details: p.details ?? "",
+      expires_at: p.expires_at ? new Date(p.expires_at).toISOString().slice(0, 16) : "",
+      amount: p.amount ?? "", pay_due_date: p.pay_due_date ?? "", installments_allowed: !!p.installments_allowed,
+      degree: p.degree ?? "", work_hours_required: p.work_hours_required ?? "", work_due_date: p.work_due_date ?? "",
+      hours: p.hours ?? "", penalty_points: p.penalty_points ?? "",
+    });
+    setOpen(true);
+  };
+  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+
   return (
     <div>
       <PageHeader title="Kary" description="Kary dla uczniów (osobno od punktów zachowania)." actions={
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" />Nowa kara</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(emptyForm); } }}>
+          <DialogTrigger asChild><Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nowa kara</Button></DialogTrigger>
           <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Nałóż karę</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Edytuj karę" : "Nałóż karę"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
@@ -120,9 +143,9 @@ function PunishmentsPage() {
               {typeMeta?.needsDegree && <div><Label>Stopień (1–20)</Label><Input type="number" min="1" max="20" value={form.degree} onChange={e => setForm({...form, degree: e.target.value})} /></div>}
               {typeMeta?.needsWork && <div><Label>Wymagane godziny pracy</Label><Input type="number" step="0.5" value={form.work_hours_required} onChange={e => setForm({...form, work_hours_required: e.target.value})} /></div>}
               {typeMeta?.needsWorkDueDate && <div><Label>Termin wykonania pracy</Label><Input type="date" value={form.work_due_date} onChange={e => setForm({...form, work_due_date: e.target.value})} /></div>}
-              {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /></div>}
+              {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Areszt liczony od momentu nałożenia. Po upływie godzin sam wygasa, ale zostaje w kartotece.</p></div>}
               <div><Label>Punkty minusowe z zachowania</Label><Input type="number" min="0" placeholder="0 = brak" value={form.penalty_points} onChange={e => setForm({...form, penalty_points: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Tyle punktów odejmie od zachowania ucznia. Wróci, gdy karę usuniesz.</p></div>
-              <Button onClick={() => add.mutate()} disabled={!form.student_id || !form.reason} className="w-full">Nałóż karę</Button>
+              <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.reason} className="w-full">{editing ? "Zapisz zmiany" : "Nałóż karę"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -184,6 +207,7 @@ function PunishmentsPage() {
                     <h3 className="font-semibold text-sm">{meta?.label ?? p.type}</h3>
                     <span className="text-xs px-2 py-0.5 rounded bg-secondary">{p.students?.journal_no}. {p.students?.first_name} {p.students?.last_name}</span>
                     {(paidFully || workedFully) && <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Wykonana</span>}
+                    {arrestExpired(p) && <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">Areszt zakończony</span>}
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(p.created_at).toLocaleString("pl")}</span>
                   </div>
                   <p className="text-sm mt-1"><strong>Powód:</strong> {p.reason}</p>
@@ -193,7 +217,7 @@ function PunishmentsPage() {
                     {p.amount && <span>Kwota: {p.amount} zł {p.installments_allowed && "(raty)"} • do {p.pay_due_date} • opł.: {p.amount_paid ?? 0} zł</span>}
                     {p.degree && <span>Stopień: {p.degree}</span>}
                     {p.work_hours_required && <span>Praca: {p.work_hours_done ?? 0}/{p.work_hours_required} h{p.work_due_date ? ` • do ${p.work_due_date}` : ""}</span>}
-                    {p.hours && <span>{p.hours} h aresztu</span>}
+                    {p.hours && (() => { const end = arrestEndsAt(p); return <span>{p.hours} h aresztu{end ? ` • do ${end.toLocaleString("pl", { dateStyle: "short", timeStyle: "short" })}` : ""}{arrestExpired(p) ? " (zakończony)" : ""}</span>; })()}
                     {p.penalty_points > 0 && <span className="text-destructive font-semibold">−{p.penalty_points} pkt zach.</span>}
                   </div>
                 </div>
@@ -203,6 +227,7 @@ function PunishmentsPage() {
                       <Wallet className="w-3.5 h-3.5 mr-1" />{meta?.needsPayment ? "Opłać" : "Wpisz wykonanie"}
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>Edytuj</Button>
                   <button onClick={() => { if (window.confirm("Usunąć karę?")) del.mutate(p.id); }}><Trash2 className="w-4 h-4 text-destructive" /></button>
                 </div>
               </div>

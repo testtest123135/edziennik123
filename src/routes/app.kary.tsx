@@ -111,10 +111,10 @@ function PunishmentsPage() {
   return (
     <div>
       <PageHeader title="Kary" description="Kary dla uczniów (osobno od punktów zachowania)." actions={
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" />Nowa kara</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(emptyForm); } }}>
+          <DialogTrigger asChild><Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nowa kara</Button></DialogTrigger>
           <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Nałóż karę</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Edytuj karę" : "Nałóż karę"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
@@ -143,9 +143,9 @@ function PunishmentsPage() {
               {typeMeta?.needsDegree && <div><Label>Stopień (1–20)</Label><Input type="number" min="1" max="20" value={form.degree} onChange={e => setForm({...form, degree: e.target.value})} /></div>}
               {typeMeta?.needsWork && <div><Label>Wymagane godziny pracy</Label><Input type="number" step="0.5" value={form.work_hours_required} onChange={e => setForm({...form, work_hours_required: e.target.value})} /></div>}
               {typeMeta?.needsWorkDueDate && <div><Label>Termin wykonania pracy</Label><Input type="date" value={form.work_due_date} onChange={e => setForm({...form, work_due_date: e.target.value})} /></div>}
-              {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /></div>}
+              {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Areszt liczony od momentu nałożenia. Po upływie godzin sam wygasa, ale zostaje w kartotece.</p></div>}
               <div><Label>Punkty minusowe z zachowania</Label><Input type="number" min="0" placeholder="0 = brak" value={form.penalty_points} onChange={e => setForm({...form, penalty_points: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Tyle punktów odejmie od zachowania ucznia. Wróci, gdy karę usuniesz.</p></div>
-              <Button onClick={() => add.mutate()} disabled={!form.student_id || !form.reason} className="w-full">Nałóż karę</Button>
+              <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.reason} className="w-full">{editing ? "Zapisz zmiany" : "Nałóż karę"}</Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -80,6 +80,7 @@ function TopicsPage() {
               <div key={t.id} className="border-b border-border pb-2 last:border-0 flex gap-3">
                 <div className="text-xs text-muted-foreground w-24 shrink-0">{t.date}<br /><span className="text-accent">{t.subjects?.name ?? "—"}</span></div>
                 <div className="flex-1"><p className="font-medium text-sm">{t.topic}</p>{t.notes && <p className="text-xs text-muted-foreground mt-1">{t.notes}</p>}</div>
+                <button onClick={() => openEdit(t)}><Pencil className="w-4 h-4 text-muted-foreground" /></button>
                 <button onClick={() => del.mutate(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></button>
               </div>
             ))}

@@ -61,7 +61,7 @@ function TopicsPage() {
           </div>
           <div><Label>Temat</Label><Input value={topic} onChange={e => setTopic(e.target.value)} /></div>
           <div><Label>Notatki</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} /></div>
-          <Button onClick={() => add.mutate()} disabled={!topic} className="w-full"><Plus className="w-4 h-4 mr-1" />Dodaj</Button>
+          <div className="flex gap-2"><Button onClick={() => save.mutate()} disabled={!topic} className="flex-1"><Plus className="w-4 h-4 mr-1" />{editing ? "Zapisz" : "Dodaj"}</Button>{editing && <Button variant="outline" onClick={() => { setEditing(null); setTopic(""); setNotes(""); }}>Anuluj</Button>}</div>
         </Card>
         <Card className="p-4 lg:col-span-2 space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">

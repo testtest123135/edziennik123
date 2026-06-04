@@ -27,22 +27,35 @@ function AttendancePage() {
   const qc = useQueryClient();
   const search = Route.useSearch() as { date?: string; subject_id?: string } | undefined;
   const [date, setDate] = useState(search?.date ?? new Date().toISOString().slice(0, 10));
-  const [subjectId, setSubjectId] = useState<string>(search?.subject_id ?? "__none");
+  // "__all" = pokaż wszelką frekwencję z danego dnia (każdy uczeń – ostatnio zapisany status)
+  // "__none" = tylko ogólna (subject_id IS NULL)
+  // <id> = konkretny przedmiot
+  const [subjectId, setSubjectId] = useState<string>(search?.subject_id ?? "__all");
   const [query, setQuery] = useState("");
   const [classFilter, setClassFilter] = useState("all");
-  const [sort, setSort] = useState("journal"); // domyślnie: kolejność z dziennika
+  const [sort, setSort] = useState("journal");
 
   const { data: students = [] } = useQuery({ queryKey: ["students"], queryFn: async () => (await supabase.from("students").select("*").order("sort_order").order("journal_no")).data ?? [] });
   const { data: subjects = [] } = useQuery({ queryKey: ["subjects"], queryFn: async () => (await supabase.from("subjects").select("id, name").order("name")).data ?? [] });
-  const { data: attendance = [] } = useQuery({
-    queryKey: ["attendance", date, subjectId],
-    queryFn: async () => {
-      let q = supabase.from("attendance").select("*").eq("date", date);
-      if (subjectId === "__none") q = q.is("subject_id", null);
-      else q = q.eq("subject_id", subjectId);
-      return (await q).data ?? [];
-    },
+
+  // Pobieramy WSZYSTKIE wpisy frekwencji na ten dzień (i tak są małe), filtrowanie po stronie klienta.
+  // Dzięki temu jeśli ktoś zaznaczył obecność z modułu Lekcja (subject_id=X),
+  // też tu pojawi się jako odhaczony.
+  const { data: allAttendance = [] } = useQuery({
+    queryKey: ["attendance-day", date],
+    queryFn: async () => (await supabase.from("attendance").select("*").eq("date", date).order("created_at", { ascending: false })).data ?? [],
   });
+
+  const attendance = useMemo(() => {
+    if (subjectId === "__all") {
+      // wybierz najnowszy status na ucznia
+      const m = new Map<string, any>();
+      for (const a of allAttendance as any[]) if (!m.has(a.student_id)) m.set(a.student_id, a);
+      return Array.from(m.values());
+    }
+    if (subjectId === "__none") return (allAttendance as any[]).filter(a => a.subject_id === null);
+    return (allAttendance as any[]).filter(a => a.subject_id === subjectId);
+  }, [allAttendance, subjectId]);
 
   const classes = useMemo(() => Array.from(new Set(students.map(s => s.class_name).filter(Boolean))) as string[], [students]);
   const filtered = useMemo(() => {
@@ -50,7 +63,7 @@ function AttendancePage() {
     const arr = students
       .filter(s => !q || `${s.first_name} ${s.last_name}`.toLowerCase().includes(q))
       .filter(s => classFilter === "all" || s.class_name === classFilter);
-    if (sort === "journal") return arr; // już posortowane przez supabase
+    if (sort === "journal") return arr;
     if (sort === "first_name") return [...arr].sort((a, b) => (a.first_name ?? "").localeCompare(b.first_name ?? ""));
     if (sort === "last_name") return [...arr].sort((a, b) => (a.last_name ?? "").localeCompare(b.last_name ?? ""));
     return arr;
@@ -58,31 +71,39 @@ function AttendancePage() {
 
   const set = useMutation({
     mutationFn: async ({ student_id, status }: { student_id: string; status: string }) => {
-      const existing = (attendance as any[]).find(a => a.student_id === student_id);
-      const subject = subjectId === "__none" ? null : subjectId;
+      // jeżeli filtr to "__all" – aktualizuj ostatni wpis ucznia z tego dnia (jakikolwiek subject)
+      // jeżeli to konkretny subject albo "__none" – aktualizuj wpis ucznia z tym subject (lub null)
+      const subject = subjectId === "__none" || subjectId === "__all" ? null : subjectId;
+      let existing: any = null;
+      if (subjectId === "__all") {
+        existing = (attendance as any[]).find(a => a.student_id === student_id);
+      } else {
+        existing = (allAttendance as any[]).find(a => a.student_id === student_id && (subject === null ? a.subject_id === null : a.subject_id === subject));
+      }
       if (existing) { const { error } = await supabase.from("attendance").update({ status }).eq("id", existing.id); if (error) throw error; }
       else { const { error } = await supabase.from("attendance").insert({ student_id, status, date, subject_id: subject }); if (error) throw error; }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["attendance", date, subjectId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["attendance-day", date] }),
     onError: (e: any) => toast.error(e.message),
   });
 
-  const subjectName = subjects.find((s: any) => s.id === subjectId)?.name;
+  const subjectLabel = subjectId === "__all" ? "wszystkie wpisy" : subjectId === "__none" ? "ogólna" : subjects.find((s: any) => s.id === subjectId)?.name;
 
   return (
     <div>
       <PageHeader
         title="Frekwencja"
-        description={`Sprawdź obecność${subjectName ? ` — ${subjectName}` : ""} • ${date}`}
+        description={`${subjectLabel ? subjectLabel + " • " : ""}${date}`}
         actions={<div><Label className="text-xs">Data</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>}
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-4">
         <Card className="p-3 flex flex-wrap gap-2 items-end">
           <div className="flex-1 min-w-[180px]"><Label className="text-xs">Szukaj</Label><Input placeholder="Imię lub nazwisko…" value={query} onChange={e => setQuery(e.target.value)} /></div>
-          <div className="w-44"><Label className="text-xs">Przedmiot</Label>
+          <div className="w-52"><Label className="text-xs">Widok</Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="__all">Wszystkie wpisy dnia</SelectItem>
                 <SelectItem value="__none">— ogólna —</SelectItem>
                 {(subjects as any[]).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>

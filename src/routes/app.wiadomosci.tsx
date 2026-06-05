@@ -12,15 +12,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Bot, Trash2 } from "lucide-react";
+import { Plus, Bot, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/wiadomosci")({ component: MessagesPage });
 
+const empty = { student_id: "", subject: "", body: "" };
+
 function MessagesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ student_id: "", subject: "", body: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<any>(empty);
   const genReply = useServerFn(generateParentReply);
   const [fStudent, setFStudent] = useState("all");
   const [fDir, setFDir] = useState("all");
@@ -33,15 +36,21 @@ function MessagesPage() {
     .filter(m => fDir === "all" || m.direction === fDir)
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at));
 
-  const send = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
-      const delayMin = 5 + Math.floor(Math.random() * 85);
-      const scheduled = new Date(Date.now() + delayMin * 60_000).toISOString();
-      const { error } = await supabase.from("messages").insert({ ...form, direction: "outgoing", ai_scheduled_for: scheduled });
-      if (error) throw error;
+      if (editId) {
+        const { error } = await supabase.from("messages").update({ student_id: form.student_id, subject: form.subject, body: form.body }).eq("id", editId).eq("direction", "outgoing");
+        if (error) throw error;
+      } else {
+        const delayMin = 5 + Math.floor(Math.random() * 85);
+        const scheduled = new Date(Date.now() + delayMin * 60_000).toISOString();
+        const { error } = await supabase.from("messages").insert({ ...form, direction: "outgoing", ai_scheduled_for: scheduled });
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Wysłano. AI odpowie w ciągu 5-90 min."); qc.invalidateQueries({ queryKey: ["messages"] }); setOpen(false); setForm({ student_id: "", subject: "", body: "" }); },
+    onSuccess: () => { toast.success(editId ? "Zapisano" : "Wysłano. AI odpowie w ciągu 5-90 min."); qc.invalidateQueries({ queryKey: ["messages"] }); setOpen(false); setEditId(null); setForm(empty); },
   });
+  const openEdit = (m: any) => { setEditId(m.id); setForm({ student_id: m.student_id ?? "", subject: m.subject ?? "", body: m.body ?? "" }); setOpen(true); };
 
   const triggerAI = async (id: string) => {
     try { await genReply({ data: { messageId: id } }); toast.success("Odpowiedź wygenerowana"); qc.invalidateQueries({ queryKey: ["messages"] }); }
@@ -53,10 +62,10 @@ function MessagesPage() {
   return (
     <div>
       <PageHeader title="Wiadomości" description="Korespondencja z rodzicami. AI symuluje odpowiedź rodzica (5 min – 1,5 h)." actions={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(empty); } }}>
           <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" />Nowa wiadomość</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Wiadomość do rodzica</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? "Edytuj wiadomość" : "Wiadomość do rodzica"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
@@ -66,7 +75,7 @@ function MessagesPage() {
               </div>
               <div><Label>Temat</Label><Input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} /></div>
               <div><Label>Treść</Label><Textarea value={form.body} onChange={e => setForm({...form, body: e.target.value})} rows={5} /></div>
-              <Button onClick={() => send.mutate()} disabled={!form.student_id || !form.body} className="w-full">Wyślij</Button>
+              <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.body} className="w-full">{editId ? "Zapisz zmiany" : "Wyślij"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -90,7 +99,10 @@ function MessagesPage() {
                 {m.direction === "outgoing" && !m.ai_replied && (
                   <Button size="sm" variant="outline" onClick={() => triggerAI(m.id)}><Bot className="w-3.5 h-3.5 mr-1" />Wygeneruj odp.</Button>
                 )}
-                <button onClick={() => del.mutate(m.id)}><Trash2 className="w-4 h-4 text-destructive" /></button>
+                {m.direction === "outgoing" && (
+                  <button onClick={() => openEdit(m)} title="Edytuj"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
+                )}
+                <button onClick={() => del.mutate(m.id)} title="Usuń"><Trash2 className="w-4 h-4 text-destructive" /></button>
               </div>
             </div>
           </Card>

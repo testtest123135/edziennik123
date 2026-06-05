@@ -181,8 +181,38 @@ function KartotekaPage() {
           {show("messages") && MessagesCard}
         </div>
 
-        {tab === "all" && student.notes && <Card className="p-4"><h3 className="font-semibold mb-2">Notatki</h3><p className="text-sm whitespace-pre-wrap">{student.notes}</p></Card>}
+        {tab === "all" && (
+          <Card className="p-4">
+            <h3 className="font-semibold mb-3">Dane ucznia</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+              <Info label="Klasa" value={student.class_name} />
+              <Info label="Nr w dzienniku" value={student.journal_no} />
+              <Info label="Data urodzenia" value={student.date_of_birth} />
+              <Info label="Płeć" value={student.gender === "K" ? "Kobieta" : student.gender === "M" ? "Mężczyzna" : student.gender} />
+              <Info label="PESEL" value={student.pesel} />
+              <Info label="Adres" value={student.address} />
+              <Info label="Rodzic 1" value={student.parent_name} />
+              <Info label="Kontakt rodzica 1" value={student.parent_contact} />
+              <Info label="Telefon rodzica" value={student.parent_phone} />
+              <Info label="E-mail rodzica" value={student.parent_email} />
+              <Info label="Rodzic 2" value={student.second_parent_name} />
+              <Info label="Kontakt rodzica 2" value={student.second_parent_contact} />
+            </div>
+            {student.health_notes && <div className="mt-3"><div className="text-xs text-muted-foreground">Zdrowie / uwagi medyczne</div><p className="text-sm whitespace-pre-wrap">{student.health_notes}</p></div>}
+            {student.hobbies && <div className="mt-3"><div className="text-xs text-muted-foreground">Zainteresowania / hobby</div><p className="text-sm whitespace-pre-wrap">{student.hobbies}</p></div>}
+            {student.notes && <div className="mt-3"><div className="text-xs text-muted-foreground">Notatki</div><p className="text-sm whitespace-pre-wrap">{student.notes}</p></div>}
+          </Card>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: any }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="font-medium">{value || value === 0 ? value : "—"}</div>
     </div>
   );
 }

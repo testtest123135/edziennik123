@@ -99,7 +99,10 @@ function MessagesPage() {
                 {m.direction === "outgoing" && !m.ai_replied && (
                   <Button size="sm" variant="outline" onClick={() => triggerAI(m.id)}><Bot className="w-3.5 h-3.5 mr-1" />Wygeneruj odp.</Button>
                 )}
-                <button onClick={() => del.mutate(m.id)}><Trash2 className="w-4 h-4 text-destructive" /></button>
+                {m.direction === "outgoing" && (
+                  <button onClick={() => openEdit(m)} title="Edytuj"><Pencil className="w-4 h-4 text-muted-foreground" /></button>
+                )}
+                <button onClick={() => del.mutate(m.id)} title="Usuń"><Trash2 className="w-4 h-4 text-destructive" /></button>
               </div>
             </div>
           </Card>

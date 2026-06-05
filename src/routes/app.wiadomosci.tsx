@@ -17,10 +17,13 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/wiadomosci")({ component: MessagesPage });
 
+const empty = { student_id: "", subject: "", body: "" };
+
 function MessagesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ student_id: "", subject: "", body: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<any>(empty);
   const genReply = useServerFn(generateParentReply);
   const [fStudent, setFStudent] = useState("all");
   const [fDir, setFDir] = useState("all");

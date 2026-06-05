@@ -62,10 +62,10 @@ function MessagesPage() {
   return (
     <div>
       <PageHeader title="Wiadomości" description="Korespondencja z rodzicami. AI symuluje odpowiedź rodzica (5 min – 1,5 h)." actions={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(empty); } }}>
           <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" />Nowa wiadomość</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Wiadomość do rodzica</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? "Edytuj wiadomość" : "Wiadomość do rodzica"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Uczeń</Label>
                 <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
@@ -75,7 +75,7 @@ function MessagesPage() {
               </div>
               <div><Label>Temat</Label><Input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} /></div>
               <div><Label>Treść</Label><Textarea value={form.body} onChange={e => setForm({...form, body: e.target.value})} rows={5} /></div>
-              <Button onClick={() => send.mutate()} disabled={!form.student_id || !form.body} className="w-full">Wyślij</Button>
+              <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.body} className="w-full">{editId ? "Zapisz zmiany" : "Wyślij"}</Button>
             </div>
           </DialogContent>
         </Dialog>

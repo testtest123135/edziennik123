@@ -119,14 +119,33 @@ function StudentsPage() {
           <Button variant="outline" onClick={() => setReorderOpen(true)}><ListOrdered className="w-4 h-4 mr-1" />Kolejność</Button>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(emptyForm); }}}>
             <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-1" />Dodaj ucznia</Button></DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editId ? "Edytuj ucznia" : "Nowy uczeń"}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Imię</Label><Input value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})} /></div>
                 <div><Label>Nazwisko</Label><Input value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} /></div>
                 <div><Label>Klasa</Label><Input value={form.class_name} onChange={e => setForm({...form, class_name: e.target.value})} /></div>
-                <div><Label>Rodzic</Label><Input value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})} /></div>
-                <div className="col-span-2"><Label>Kontakt do rodzica</Label><Input value={form.parent_contact} onChange={e => setForm({...form, parent_contact: e.target.value})} /></div>
+                <div><Label>Data urodzenia</Label><Input type="date" value={form.date_of_birth} onChange={e => setForm({...form, date_of_birth: e.target.value})} /></div>
+                <div><Label>Płeć</Label>
+                  <Select value={form.gender || "none"} onValueChange={(v) => setForm({...form, gender: v === "none" ? "" : v})}>
+                    <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      <SelectItem value="K">Kobieta</SelectItem>
+                      <SelectItem value="M">Mężczyzna</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>PESEL</Label><Input value={form.pesel} onChange={e => setForm({...form, pesel: e.target.value})} /></div>
+                <div className="col-span-2"><Label>Adres</Label><Input value={form.address} onChange={e => setForm({...form, address: e.target.value})} /></div>
+                <div><Label>Rodzic 1 — imię i nazwisko</Label><Input value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})} /></div>
+                <div><Label>Rodzic 1 — kontakt</Label><Input value={form.parent_contact} onChange={e => setForm({...form, parent_contact: e.target.value})} /></div>
+                <div><Label>Telefon rodzica</Label><Input value={form.parent_phone} onChange={e => setForm({...form, parent_phone: e.target.value})} /></div>
+                <div><Label>E-mail rodzica</Label><Input type="email" value={form.parent_email} onChange={e => setForm({...form, parent_email: e.target.value})} /></div>
+                <div><Label>Rodzic 2 — imię i nazwisko</Label><Input value={form.second_parent_name} onChange={e => setForm({...form, second_parent_name: e.target.value})} /></div>
+                <div><Label>Rodzic 2 — kontakt</Label><Input value={form.second_parent_contact} onChange={e => setForm({...form, second_parent_contact: e.target.value})} /></div>
+                <div className="col-span-2"><Label>Zdrowie / uwagi medyczne</Label><Textarea rows={2} value={form.health_notes} onChange={e => setForm({...form, health_notes: e.target.value})} /></div>
+                <div className="col-span-2"><Label>Zainteresowania / hobby</Label><Textarea rows={2} value={form.hobbies} onChange={e => setForm({...form, hobbies: e.target.value})} /></div>
                 <div className="col-span-2"><Label>Notatki</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
               </div>
               <Button onClick={() => upsert.mutate()} disabled={!form.first_name || !form.last_name}>{editId ? "Zapisz zmiany" : "Zapisz"}</Button>

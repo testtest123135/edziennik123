@@ -16,7 +16,13 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/uczniowie/")({ component: StudentsPage });
 
-const emptyForm = { first_name: "", last_name: "", class_name: "", parent_name: "", parent_contact: "", notes: "" };
+const emptyForm = {
+  first_name: "", last_name: "", class_name: "",
+  parent_name: "", parent_contact: "", parent_phone: "", parent_email: "",
+  second_parent_name: "", second_parent_contact: "",
+  date_of_birth: "", gender: "", pesel: "", address: "",
+  health_notes: "", hobbies: "", notes: "",
+};
 
 function StudentsPage() {
   const qc = useQueryClient();

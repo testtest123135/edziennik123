@@ -61,14 +61,15 @@ function CalendarPage() {
 
   // Month grid
   const monthLabel = cursor.toLocaleString("pl", { month: "long", year: "numeric" });
+  const toLocalISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const grid = useMemo(() => {
     const firstDow = (cursor.getDay() + 6) % 7; // mon=0
     const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
     const cells: { date: string | null; isToday?: boolean }[] = [];
     for (let i = 0; i < firstDow; i++) cells.push({ date: null });
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalISO(new Date());
     for (let d = 1; d <= daysInMonth; d++) {
-      const ds = new Date(cursor.getFullYear(), cursor.getMonth(), d).toISOString().slice(0, 10);
+      const ds = toLocalISO(new Date(cursor.getFullYear(), cursor.getMonth(), d));
       cells.push({ date: ds, isToday: ds === today });
     }
     while (cells.length % 7 !== 0) cells.push({ date: null });

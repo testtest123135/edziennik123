@@ -100,7 +100,12 @@ function StudentsPage() {
     setEditId(s.id);
     setForm({
       first_name: s.first_name ?? "", last_name: s.last_name ?? "", class_name: s.class_name ?? "",
-      parent_name: s.parent_name ?? "", parent_contact: s.parent_contact ?? "", notes: s.notes ?? "",
+      parent_name: s.parent_name ?? "", parent_contact: s.parent_contact ?? "",
+      parent_phone: s.parent_phone ?? "", parent_email: s.parent_email ?? "",
+      second_parent_name: s.second_parent_name ?? "", second_parent_contact: s.second_parent_contact ?? "",
+      date_of_birth: s.date_of_birth ?? "", gender: s.gender ?? "", pesel: s.pesel ?? "",
+      address: s.address ?? "", health_notes: s.health_notes ?? "", hobbies: s.hobbies ?? "",
+      notes: s.notes ?? "",
     });
     setOpen(true);
   };

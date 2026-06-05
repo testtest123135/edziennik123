@@ -36,15 +36,21 @@ function MessagesPage() {
     .filter(m => fDir === "all" || m.direction === fDir)
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at));
 
-  const send = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
-      const delayMin = 5 + Math.floor(Math.random() * 85);
-      const scheduled = new Date(Date.now() + delayMin * 60_000).toISOString();
-      const { error } = await supabase.from("messages").insert({ ...form, direction: "outgoing", ai_scheduled_for: scheduled });
-      if (error) throw error;
+      if (editId) {
+        const { error } = await supabase.from("messages").update({ student_id: form.student_id, subject: form.subject, body: form.body }).eq("id", editId).eq("direction", "outgoing");
+        if (error) throw error;
+      } else {
+        const delayMin = 5 + Math.floor(Math.random() * 85);
+        const scheduled = new Date(Date.now() + delayMin * 60_000).toISOString();
+        const { error } = await supabase.from("messages").insert({ ...form, direction: "outgoing", ai_scheduled_for: scheduled });
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Wysłano. AI odpowie w ciągu 5-90 min."); qc.invalidateQueries({ queryKey: ["messages"] }); setOpen(false); setForm({ student_id: "", subject: "", body: "" }); },
+    onSuccess: () => { toast.success(editId ? "Zapisano" : "Wysłano. AI odpowie w ciągu 5-90 min."); qc.invalidateQueries({ queryKey: ["messages"] }); setOpen(false); setEditId(null); setForm(empty); },
   });
+  const openEdit = (m: any) => { setEditId(m.id); setForm({ student_id: m.student_id ?? "", subject: m.subject ?? "", body: m.body ?? "" }); setOpen(true); };
 
   const triggerAI = async (id: string) => {
     try { await genReply({ data: { messageId: id } }); toast.success("Odpowiedź wygenerowana"); qc.invalidateQueries({ queryKey: ["messages"] }); }

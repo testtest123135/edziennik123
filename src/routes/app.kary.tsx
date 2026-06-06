@@ -24,7 +24,11 @@ function PunishmentsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const emptyForm = { student_id: "", type: "pouczenie", reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" };
+  const newItem = (type: string) => ({ type, reason: "", details: "", expires_at: "", amount: "", pay_due_date: "", installments_allowed: false, degree: "", work_hours_required: "", work_due_date: "", hours: "", penalty_points: "" });
   const [form, setForm] = useState<any>(emptyForm);
+  const [multiStudent, setMultiStudent] = useState<string>("");
+  const [multiItems, setMultiItems] = useState<any[]>([newItem("pouczenie")]);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [actionPunishment, setActionPunishment] = useState<any>(null);
 
   const [fStudent, setFStudent] = useState("all");

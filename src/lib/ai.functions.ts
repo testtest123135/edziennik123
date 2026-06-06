@@ -323,7 +323,27 @@ export const generateParentReply = createServerFn({ method: "POST" })
       .single();
     if (msgErr || !msg) throw new Error("Wiadomość nie znaleziona");
 
-    const prompt = `Wcielasz się w rolę rodzica ucznia ${msg.students?.first_name ?? ""} ${msg.students?.last_name ?? ""}. Nauczyciel napisał do Ciebie poniższą wiadomość. Napisz krótką, naturalną i grzeczną odpowiedź rodzica (2-4 zdania). Bez nagłówków, bez podpisu.
+    const TONES = [
+      { key: "przychylny", desc: "Życzliwy, wspierający rodzic. Dziękuje za informację, deklaruje współpracę." },
+      { key: "neutralny", desc: "Rzeczowy, krótki ton. Potwierdza przyjęcie informacji bez emocji." },
+      { key: "zaniepokojony", desc: "Zmartwiony rodzic, prosi o więcej szczegółów i sugeruje spotkanie." },
+      { key: "sceptyczny", desc: "Wątpi w wersję nauczyciela, prosi o przedstawienie sytuacji z perspektywy ucznia." },
+      { key: "obronny", desc: "Broni dziecka, sugeruje że to nie jego wina lub że nauczyciel przesadza. Grzecznie, ale stanowczo." },
+      { key: "roszczeniowy", desc: "Niezadowolony, lekko pretensjonalny. Kwestionuje metody nauczyciela lub ocenianie." },
+      { key: "zirytowany", desc: "Wyraźnie zdenerwowany, krótki i ostry ton. Zarzuca nauczycielowi czepialstwo lub niesprawiedliwość. Bez wulgaryzmów." },
+      { key: "konfrontacyjny", desc: "Bardzo krytyczny, grozi zgłoszeniem do dyrekcji lub kuratorium. Stanowczy, oskarżycielski. Bez wulgaryzmów i gróźb przemocy." },
+      { key: "lekceważący", desc: "Bagatelizuje sprawę, sugeruje że nauczyciel zawraca głowę drobiazgami." },
+      { key: "zapracowany", desc: "Krótko, zdawkowo, ma mało czasu. Obieca tylko 'porozmawiać z dzieckiem'." },
+      { key: "usprawiedliwiający", desc: "Tłumaczy zachowanie/wyniki dziecka problemami domowymi, zdrowotnymi lub przeciążeniem nauką." },
+      { key: "wdzięczny", desc: "Bardzo wdzięczny i ciepły, dziękuje za zaangażowanie nauczyciela." },
+    ];
+    const tone = TONES[Math.floor(Math.random() * TONES.length)];
+
+    const prompt = `Wcielasz się w rolę rodzica ucznia ${msg.students?.first_name ?? ""} ${msg.students?.last_name ?? ""}. Nauczyciel napisał do Ciebie poniższą wiadomość. Napisz odpowiedź rodzica (2-5 zdań) w tonie: ${tone.key.toUpperCase()}.
+
+CHARAKTERYSTYKA TONU: ${tone.desc}
+
+Pisz naturalnie, po polsku, bez nagłówków i podpisu. Nie każdy rodzic musi być miły — odpowiedź ma brzmieć autentycznie dla wybranego tonu. Nie używaj wulgaryzmów ani gróźb przemocy.
 
 Temat: ${msg.subject ?? "(brak)"}
 Wiadomość: ${msg.body}`;
@@ -331,19 +351,21 @@ Wiadomość: ${msg.body}`;
     const json = await callLovableAI({
       model: "google/gemini-3-flash-preview",
       messages: [
-        { role: "system", content: "Symulujesz odpowiedź rodzica ucznia. Pisz po polsku, krótko i grzecznie." },
+        { role: "system", content: `Symulujesz odpowiedź rodzica ucznia w polskim e-dzienniku. Pisz po polsku, naturalnie i zgodnie z określonym tonem emocjonalnym. Rodzice bywają różni — od wdzięcznych po konfrontacyjnych. Aktualny ton: ${tone.key}.` },
         { role: "user", content: prompt },
       ],
     });
     const reply = json.choices?.[0]?.message?.content ?? "(brak odpowiedzi)";
+    const finalBody = `[Ton rodzica: ${tone.key}]\n\n${reply}`;
 
     const { error: insErr } = await supabase.from("messages").insert({
       student_id: msg.student_id,
       direction: "ai_reply",
       subject: msg.subject ? `Re: ${msg.subject}` : null,
-      body: reply,
+      body: finalBody,
       reply_to: msg.id,
     });
+
     if (insErr) throw new Error("Nie zapisano odpowiedzi: " + insErr.message);
     await supabase.from("messages").update({ ai_replied: true }).eq("id", msg.id);
     return { ok: true, reply };

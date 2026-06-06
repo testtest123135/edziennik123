@@ -77,26 +77,40 @@ function PunishmentsPage() {
     .sort((a, b) => sort === "date_asc" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)),
     [items, fStudent, fType, fActive, sort]);
 
+  const buildPayload = (it: any, studentId: string) => {
+    const meta = PUNISHMENT_TYPES.find(t => t.value === it.type);
+    const p: any = { student_id: studentId, type: it.type, reason: it.reason, details: it.details || null };
+    p.expires_at = it.expires_at ? new Date(it.expires_at).toISOString() : null;
+    p.amount = meta?.needsPayment ? (Number(it.amount) || null) : null;
+    p.pay_due_date = meta?.needsPayment ? (it.pay_due_date || null) : null;
+    p.installments_allowed = meta?.needsPayment ? !!it.installments_allowed : false;
+    p.degree = meta?.needsDegree ? (Number(it.degree) || null) : null;
+    p.work_hours_required = meta?.needsWork ? (Number(it.work_hours_required) || null) : null;
+    p.work_due_date = meta?.needsWorkDueDate ? (it.work_due_date || null) : null;
+    p.hours = meta?.needsHours ? Math.min(168, Number(it.hours) || 0) : null;
+    p.penalty_points = Math.max(0, Number(it.penalty_points) || 0);
+    return { payload: p, meta };
+  };
+
   const save = useMutation({
     mutationFn: async () => {
-      const payload: any = { student_id: form.student_id, type: form.type, reason: form.reason, details: form.details || null };
-      payload.expires_at = form.expires_at ? new Date(form.expires_at).toISOString() : null;
-      payload.amount = typeMeta?.needsPayment ? (Number(form.amount) || null) : null;
-      payload.pay_due_date = typeMeta?.needsPayment ? (form.pay_due_date || null) : null;
-      payload.installments_allowed = typeMeta?.needsPayment ? !!form.installments_allowed : false;
-      payload.degree = typeMeta?.needsDegree ? (Number(form.degree) || null) : null;
-      payload.work_hours_required = typeMeta?.needsWork ? (Number(form.work_hours_required) || null) : null;
-      payload.work_due_date = typeMeta?.needsWorkDueDate ? (form.work_due_date || null) : null;
-      payload.hours = typeMeta?.needsHours ? Math.min(168, Number(form.hours) || 0) : null;
-      payload.penalty_points = Math.max(0, Number(form.penalty_points) || 0);
       if (editing) {
+        const { payload } = buildPayload(form, form.student_id);
         const { error } = await supabase.from("punishments").update(payload).eq("id", editing.id); if (error) throw error;
-      } else {
-        if (typeMeta?.needsHours) payload.arrest_started_at = new Date().toISOString();
-        const { error } = await supabase.from("punishments").insert(payload); if (error) throw error;
+        return 1;
       }
+      if (!multiStudent) throw new Error("Wybierz ucznia");
+      if (!multiItems.length) throw new Error("Dodaj co najmniej jedną karę");
+      const rows = multiItems.map(it => {
+        if (!it.reason?.trim()) throw new Error(`Podaj powód dla: ${PUNISHMENT_TYPES.find(t => t.value === it.type)?.label}`);
+        const { payload, meta } = buildPayload(it, multiStudent);
+        if (meta?.needsHours) payload.arrest_started_at = new Date().toISOString();
+        return payload;
+      });
+      const { error } = await supabase.from("punishments").insert(rows); if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => { toast.success(editing ? "Zaktualizowano" : "Kara nałożona"); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setEditing(null); setForm(emptyForm); },
+    onSuccess: (n) => { toast.success(editing ? "Zaktualizowano" : `Nałożono kar: ${n}`); qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); setOpen(false); setEditing(null); setForm(emptyForm); setMultiStudent(""); setMultiItems([newItem("pouczenie")]); },
     onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({ mutationFn: async (id: string) => { await supabase.from("punishments").delete().eq("id", id); }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["punishments"] }); qc.invalidateQueries({ queryKey: ["students"] }); } });

@@ -126,47 +126,129 @@ function PunishmentsPage() {
     });
     setOpen(true);
   };
-  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm(emptyForm); setMultiStudent(""); setMultiItems([newItem("pouczenie")]); setOpen(true); };
+
+  const updateItem = (idx: number, patch: any) => setMultiItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
+  const toggleType = (typeValue: string) => {
+    setMultiItems(arr => {
+      const exists = arr.find(it => it.type === typeValue);
+      if (exists) return arr.filter(it => it.type !== typeValue);
+      return [...arr, newItem(typeValue)];
+    });
+  };
+  const removeItem = (typeValue: string) => setMultiItems(arr => arr.filter(it => it.type !== typeValue));
+
+  const renderItemFields = (it: any, idx: number, onChange: (patch: any) => void) => {
+    const meta = PUNISHMENT_TYPES.find(t => t.value === it.type);
+    return (
+      <div className="space-y-2">
+        <div><Label className="text-xs">Powód *</Label><Textarea rows={2} value={it.reason} onChange={e => onChange({ reason: e.target.value })} /></div>
+        <div><Label className="text-xs">Dodatkowe dane / opis</Label><Textarea rows={2} value={it.details} onChange={e => onChange({ details: e.target.value })} /></div>
+        {meta?.needsExpiry && <div><Label className="text-xs">Wygasa (data i godzina)</Label><Input type="datetime-local" value={it.expires_at} onChange={e => onChange({ expires_at: e.target.value })} /></div>}
+        {meta?.needsPayment && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Kwota (zł)</Label><Input type="number" step="0.01" value={it.amount} onChange={e => onChange({ amount: e.target.value })} /></div>
+              <div><Label className="text-xs">Termin zapłaty</Label><Input type="date" value={it.pay_due_date} onChange={e => onChange({ pay_due_date: e.target.value })} /></div>
+            </div>
+            <div className="flex items-center gap-2"><Switch checked={it.installments_allowed} onCheckedChange={(v) => onChange({ installments_allowed: v })} /><Label className="text-xs">Możliwe raty</Label></div>
+          </>
+        )}
+        {meta?.needsDegree && <div><Label className="text-xs">Stopień (1–20)</Label><Input type="number" min="1" max="20" value={it.degree} onChange={e => onChange({ degree: e.target.value })} /></div>}
+        {meta?.needsWork && <div><Label className="text-xs">Wymagane godziny pracy</Label><Input type="number" step="0.5" value={it.work_hours_required} onChange={e => onChange({ work_hours_required: e.target.value })} /></div>}
+        {meta?.needsWorkDueDate && <div><Label className="text-xs">Termin wykonania pracy</Label><Input type="date" value={it.work_due_date} onChange={e => onChange({ work_due_date: e.target.value })} /></div>}
+        {meta?.needsHours && <div><Label className="text-xs">Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={it.hours} onChange={e => onChange({ hours: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Areszt liczony od momentu nałożenia. Po upływie godzin sam wygasa, ale zostaje w kartotece.</p></div>}
+        <div><Label className="text-xs">Punkty minusowe z zachowania</Label><Input type="number" min="0" placeholder="0 = brak" value={it.penalty_points} onChange={e => onChange({ penalty_points: e.target.value })} /></div>
+      </div>
+    );
+  };
 
   return (
     <div>
       <PageHeader title="Kary" description="Kary dla uczniów (osobno od punktów zachowania)." actions={
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(emptyForm); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(emptyForm); setMultiStudent(""); setMultiItems([newItem("pouczenie")]); } }}>
           <DialogTrigger asChild><Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nowa kara</Button></DialogTrigger>
-          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? "Edytuj karę" : "Nałóż karę"}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>Uczeń</Label>
-                <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
-                  <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
-                  <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.journal_no}. {s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
-                </Select>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{editing ? "Edytuj karę" : `Nałóż kary${multiItems.length > 1 ? ` (${multiItems.length})` : ""}`}</DialogTitle></DialogHeader>
+            {editing ? (
+              <div className="space-y-3">
+                <div><Label>Uczeń</Label>
+                  <Select value={form.student_id} onValueChange={(v) => setForm({...form, student_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
+                    <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.journal_no}. {s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Rodzaj kary</Label>
+                  <Select value={form.type} onValueChange={(v) => setForm({...form, type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{PUNISHMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                {renderItemFields(form, 0, (patch) => setForm({ ...form, ...patch }))}
+                <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.reason} className="w-full">Zapisz zmiany</Button>
               </div>
-              <div><Label>Rodzaj kary</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({...form, type: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PUNISHMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                </Select>
+            ) : (
+              <div className="space-y-3">
+                <div><Label>Uczeń</Label>
+                  <Select value={multiStudent} onValueChange={setMultiStudent}>
+                    <SelectTrigger><SelectValue placeholder="Wybierz" /></SelectTrigger>
+                    <SelectContent>{students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.journal_no}. {s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Rodzaj kar (możesz wybrać kilka)</Label>
+                  <Popover open={typePickerOpen} onOpenChange={setTypePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                        <span className="truncate text-left">
+                          {multiItems.length === 0 ? <span className="text-muted-foreground">Wybierz kary</span> : `Zaznaczono: ${multiItems.length}`}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-1 max-h-72 overflow-y-auto" align="start">
+                      {PUNISHMENT_TYPES.map(t => {
+                        const checked = !!multiItems.find(it => it.type === t.value);
+                        return (
+                          <button type="button" key={t.value} onClick={() => toggleType(t.value)} className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-accent text-left">
+                            <Checkbox checked={checked} onCheckedChange={() => toggleType(t.value)} />
+                            <span>{t.label}</span>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                  {multiItems.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {multiItems.map(it => {
+                        const m = PUNISHMENT_TYPES.find(t => t.value === it.type);
+                        return (
+                          <span key={it.type} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-secondary text-xs">
+                            {m?.label}
+                            <button type="button" onClick={() => removeItem(it.type)}><X className="w-3 h-3" /></button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {multiItems.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Wybierz co najmniej jedną karę.</p>}
+                {multiItems.map((it, idx) => {
+                  const meta = PUNISHMENT_TYPES.find(t => t.value === it.type);
+                  return (
+                    <Card key={it.type} className="p-3 space-y-2 border-l-4 border-l-destructive">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><Gavel className="w-4 h-4 text-destructive" />{meta?.label}</h4>
+                        <button type="button" onClick={() => removeItem(it.type)}><Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" /></button>
+                      </div>
+                      {renderItemFields(it, idx, (patch) => updateItem(idx, patch))}
+                    </Card>
+                  );
+                })}
+                <Button onClick={() => save.mutate()} disabled={!multiStudent || multiItems.length === 0} className="w-full">
+                  Nałóż {multiItems.length > 1 ? `${multiItems.length} kary` : "karę"}
+                </Button>
               </div>
-              <div><Label>Powód *</Label><Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} /></div>
-              <div><Label>Dodatkowe dane / opis</Label><Textarea value={form.details} onChange={e => setForm({...form, details: e.target.value})} /></div>
-              {typeMeta?.needsExpiry && <div><Label>Wygasa (data)</Label><Input type="datetime-local" value={form.expires_at} onChange={e => setForm({...form, expires_at: e.target.value})} /></div>}
-              {typeMeta?.needsPayment && (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label>Kwota (zł)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
-                    <div><Label>Termin zapłaty</Label><Input type="date" value={form.pay_due_date} onChange={e => setForm({...form, pay_due_date: e.target.value})} /></div>
-                  </div>
-                  <div className="flex items-center gap-2"><Switch checked={form.installments_allowed} onCheckedChange={(v) => setForm({...form, installments_allowed: v})} /><Label>Możliwe raty</Label></div>
-                </>
-              )}
-              {typeMeta?.needsDegree && <div><Label>Stopień (1–20)</Label><Input type="number" min="1" max="20" value={form.degree} onChange={e => setForm({...form, degree: e.target.value})} /></div>}
-              {typeMeta?.needsWork && <div><Label>Wymagane godziny pracy</Label><Input type="number" step="0.5" value={form.work_hours_required} onChange={e => setForm({...form, work_hours_required: e.target.value})} /></div>}
-              {typeMeta?.needsWorkDueDate && <div><Label>Termin wykonania pracy</Label><Input type="date" value={form.work_due_date} onChange={e => setForm({...form, work_due_date: e.target.value})} /></div>}
-              {typeMeta?.needsHours && <div><Label>Godziny aresztu (max 168 = 7 dni)</Label><Input type="number" max="168" value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Areszt liczony od momentu nałożenia. Po upływie godzin sam wygasa, ale zostaje w kartotece.</p></div>}
-              <div><Label>Punkty minusowe z zachowania</Label><Input type="number" min="0" placeholder="0 = brak" value={form.penalty_points} onChange={e => setForm({...form, penalty_points: e.target.value})} /><p className="text-xs text-muted-foreground mt-1">Tyle punktów odejmie od zachowania ucznia. Wróci, gdy karę usuniesz.</p></div>
-              <Button onClick={() => save.mutate()} disabled={!form.student_id || !form.reason} className="w-full">{editing ? "Zapisz zmiany" : "Nałóż karę"}</Button>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       } />

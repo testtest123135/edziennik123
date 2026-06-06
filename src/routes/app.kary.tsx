@@ -47,7 +47,7 @@ function PunishmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const typeMeta = PUNISHMENT_TYPES.find(t => t.value === form.type);
+  
 
   const isActive = (p: any) => {
     const paidFully = p.amount && (p.amount_paid ?? 0) >= p.amount;

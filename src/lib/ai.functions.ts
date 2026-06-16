@@ -681,24 +681,52 @@ async function callLovableAI(body: any) {
   return res.json();
 }
 
+function sanitizeMessagesForGroq(messages: any[]): any[] {
+  // Groq/Llama-4-Scout does not support image_url content parts — strip them,
+  // keeping only text parts. Also flatten array content to a single string.
+  return messages.map(m => {
+    if (!m.content) return m;
+    if (typeof m.content === "string") return m;
+    if (Array.isArray(m.content)) {
+      const textParts = m.content
+        .filter((p: any) => p.type === "text")
+        .map((p: any) => p.text)
+        .join("\n");
+      return { ...m, content: textParts || "(brak treści)" };
+    }
+    return m;
+  });
+}
+
 async function callGroq(body: any, apiKey: string) {
+  // Groq supports parallel tool calls — pass them through.
+  // Strip image content as Llama-4-Scout doesn't support vision via Groq.
+  const sanitizedBody = {
+    ...body,
+    messages: sanitizeMessagesForGroq(body.messages),
+    // Higher max_tokens for more complete responses; Groq's TPM limit is
+    // per-model so we set a generous value while staying within context window.
+    max_tokens: 8192,
+    // Groq requires parallel_tool_calls to be set when using tools
+    parallel_tool_calls: true,
+  };
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
+    body: JSON.stringify(sanitizedBody),
   });
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(`Groq error ${res.status}: ${txt.slice(0, 300)}`);
+    if (res.status === 429) throw new Error("Limit zapytań Groq przekroczony. Spróbuj za chwilę.");
+    throw new Error(`Groq error ${res.status}: ${txt.slice(0, 400)}`);
   }
   return res.json();
 }
 
-const BROKEN_MODELS = ["meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"];
 function pickModel(provider: string, raw?: string | null): string {
   const m = (raw ?? "").trim();
-  if (!m || BROKEN_MODELS.includes(m) || m.includes("llama-4")) {
-    return provider === "groq" ? "llama-3.3-70b-versatile" : "google/gemini-3-flash-preview";
+  if (!m) {
+    return provider === "groq" ? "meta-llama/llama-4-scout-17b-16e-instruct" : "google/gemini-3-flash-preview";
   }
   return m;
 }
@@ -770,7 +798,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const callAI = (b: any) => {
       if (provider === "groq") {
         const groqKey = process.env.AI || process.env.GROQ_API_KEY;
-        if (!groqKey) throw new Error("Brak klucza Groq w sekretach (oczekiwana nazwa: AI).");
+        if (!groqKey) throw new Error("Brak klucza Groq w sekretach (oczekiwana nazwa: AI lub GROQ_API_KEY).");
         return callGroq(b, groqKey);
       }
       return callLovableAI(b);

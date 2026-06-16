@@ -339,27 +339,28 @@ function AIPage() {
     sendPrompt(prompt);
   };
 
-  const sendPrompt = (prompt: string) => {
+  const sendPrompt = async (prompt: string) => {
     if (!activeId || sending) return;
-    setInput(prompt);
-    setTimeout(async () => {
-      setSending(true);
-      try {
-        const file = attachedFile;
-        setAttachedFile(null);
-        await send({
-          data: {
-            chatId: activeId!, userMessage: prompt, imageUrl: undefined,
-            fileText: file?.type === "document" ? file.text : undefined,
-            fileName: file?.type === "document" ? file.name : undefined,
-          },
-        });
-        qc.invalidateQueries({ queryKey: ["ai_messages", activeId!] });
-        qc.invalidateQueries({ queryKey: ["ai_chats"] });
-      } catch (e: any) {
-        toast.error(e.message ?? "Błąd AI");
-      } finally { setSending(false); setInput(""); inputRef.current?.focus(); }
-    }, 50);
+    setSending(true);
+    const file = attachedFile;
+    setAttachedFile(null);
+    setInput("");
+    try {
+      await send({
+        data: {
+          chatId: activeId, userMessage: prompt, imageUrl: undefined,
+          fileText: file?.type === "document" ? file.text : undefined,
+          fileName: file?.type === "document" ? file.name : undefined,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["ai_messages", activeId] });
+      qc.invalidateQueries({ queryKey: ["ai_chats"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Błąd AI");
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
   };
 
   const Sidebar = (

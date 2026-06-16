@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Send, ImageIcon, Check, X, Sparkles, GraduationCap, CalendarCheck, Heart, Gavel, BookOpen, MessageSquare } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Trash2, Send, Image as ImageIcon, Check, X, Sparkles, GraduationCap, CalendarCheck, Heart, Gavel, BookOpen, MessageSquare, ChartBar as BarChart3, TrendingUp, TriangleAlert as AlertTriangle, Users, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,27 @@ const ACTION_META: Record<string, { label: string; icon: any; color: string }> =
   add_lesson_topic: { label: "Dodaj temat lekcji",            icon: BookOpen,      color: "text-primary" },
   send_message:     { label: "Wyślij wiadomość do rodzica",   icon: MessageSquare, color: "text-accent" },
 };
+
+type QuickCmd = {
+  id: string;
+  label: string;
+  icon: any;
+  prompt: string;
+  needsInput?: { key: string; label: string; placeholder: string }[];
+  color: string;
+};
+
+const QUICK_COMMANDS: QuickCmd[] = [
+  { id: "class_avg", label: "Średnia klasy", icon: BarChart3, prompt: "Jaka jest średnia ocen w klasie? Pokaż ranking uczniów ze średnimi.", color: "bg-primary/10 text-primary hover:bg-primary/20" },
+  { id: "subject_avg", label: "Średnia z przedmiotu", icon: TrendingUp, prompt: "Jaka jest średnia klasy z przedmiotu {subject}?", needsInput: [{ key: "subject", label: "Przedmiot", placeholder: "np. matematyka" }], color: "bg-accent/10 text-accent hover:bg-accent/20" },
+  { id: "missing", label: "Braki ocen", icon: AlertTriangle, prompt: "Kto nie ma oceny z {category}?", needsInput: [{ key: "category", label: "Kategoria", placeholder: "np. sprawdzian, kartkówka" }], color: "bg-warning/10 text-warning hover:bg-warning/20" },
+  { id: "improve", label: "Do poprawy", icon: TrendingUp, prompt: "Które oceny można poprawić? Pokaż listę z propozycjami.", color: "bg-success/10 text-success hover:bg-success/20" },
+  { id: "attendance", label: "Frekwencja", icon: CalendarCheck, prompt: "Jak wygląda frekwencja w klasie? Kto ma najwięcej nieobecności?", color: "bg-primary/10 text-primary hover:bg-primary/20" },
+  { id: "student_summary", label: "Podsumowanie ucznia", icon: Users, prompt: "Podsumuj sytuację ucznia {student}: oceny, frekwencję, zachowanie, kary.", needsInput: [{ key: "student", label: "Uczeń", placeholder: "np. Jan Kowalski" }], color: "bg-accent/10 text-accent hover:bg-accent/20" },
+  { id: "raise_avg", label: "Podnieś średnią", icon: TrendingUp, prompt: "Jak podnieść średnią ucznia {student} do {target}?", needsInput: [{ key: "student", label: "Uczeń", placeholder: "np. Jan Kowalski" }, { key: "target", label: "Docelowa średnia", placeholder: "np. 4.5" }], color: "bg-success/10 text-success hover:bg-success/20" },
+  { id: "behavior_overview", label: "Zachowanie", icon: Heart, prompt: "Jak wygląda zachowanie w klasie? Kto ma najwięcej minusów?", color: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
+  { id: "punishments_active", label: "Aktywne kary", icon: Gavel, prompt: "Jakie są aktywne kary w klasie? Kto musi jeszcze odpracować lub zapłacić?", color: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
+];
 
 function parseStored(content: string): { actions: any[]; text: string } {
   if (!content.startsWith("__ACTIONS__")) return { actions: [], text: content };
@@ -210,6 +232,8 @@ function AIPage() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<Record<string, "ok" | "rejected">>({});
   const [showSidebar, setShowSidebar] = useState(false);
+  const [quickCmdOpen, setQuickCmdOpen] = useState<QuickCmd | null>(null);
+  const [quickCmdInputs, setQuickCmdInputs] = useState<Record<string, string>>({});
   const send = useServerFn(sendChatMessage);
   const exec = useServerFn(executeAiAction);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -283,6 +307,44 @@ function AIPage() {
   };
   const reject = (key: string) => { setDone(d => ({ ...d, [key]: "rejected" })); toast.message("Odrzucono"); };
 
+  const runQuickCmd = (cmd: QuickCmd) => {
+    if (cmd.needsInput) {
+      setQuickCmdOpen(cmd);
+      setQuickCmdInputs(Object.fromEntries(cmd.needsInput.map(f => [f.key, ""])));
+    } else {
+      sendPrompt(cmd.prompt);
+    }
+  };
+
+  const submitQuickCmd = () => {
+    if (!quickCmdOpen) return;
+    let prompt = quickCmdOpen.prompt;
+    for (const field of quickCmdOpen.needsInput ?? []) {
+      const val = quickCmdInputs[field.key]?.trim();
+      if (!val) { toast.error(`Uzupełnij: ${field.label}`); return; }
+      prompt = prompt.replace(`{${field.key}}`, val);
+    }
+    setQuickCmdOpen(null);
+    setQuickCmdInputs({});
+    sendPrompt(prompt);
+  };
+
+  const sendPrompt = (prompt: string) => {
+    if (!activeId || sending) return;
+    setInput(prompt);
+    // Use setTimeout to allow state to update before submit reads it
+    setTimeout(async () => {
+      setSending(true);
+      try {
+        await send({ data: { chatId: activeId!, userMessage: prompt, imageUrl: undefined } });
+        qc.invalidateQueries({ queryKey: ["ai_messages", activeId!] });
+        qc.invalidateQueries({ queryKey: ["ai_chats"] });
+      } catch (e: any) {
+        toast.error(e.message ?? "Błąd AI");
+      } finally { setSending(false); setInput(""); inputRef.current?.focus(); }
+    }, 50);
+  };
+
   const Sidebar = (
     <aside className="w-64 border-r border-border bg-card overflow-y-auto p-2 space-y-1 shrink-0">
       <Button onClick={newChat} size="sm" className="w-full mb-2"><Plus className="w-4 h-4 mr-1" />Nowy chat</Button>
@@ -347,9 +409,28 @@ function AIPage() {
           </div>
           {activeId && (
             <div className="border-t border-border p-3 sm:p-4 space-y-2 bg-card">
+              {/* Quick command buttons */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 pl-0.5"><Zap className="w-3 h-3" />Szybkie:</span>
+                {QUICK_COMMANDS.map(cmd => {
+                  const Icon = cmd.icon;
+                  return (
+                    <button
+                      key={cmd.id}
+                      type="button"
+                      onClick={() => runQuickCmd(cmd)}
+                      disabled={sending}
+                      className={cn("flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shrink-0 border border-transparent hover:border-border", cmd.color, sending && "opacity-50 cursor-not-allowed")}
+                    >
+                      <Icon className="w-3 h-3" />{cmd.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {imageUrl && <div className="flex items-center gap-2 text-xs"><ImageIcon className="w-3 h-3" /><span className="truncate flex-1">{imageUrl}</span><button onClick={() => setImageUrl("")} className="text-destructive">usuń</button></div>}
               <div className="flex gap-2">
-                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość… np. „Dodaj Janowi Kowalskiemu ocenę 4 z matematyki, waga 2”"
+                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość… np. „Dodaj Janowi Kowalskiemu ocenę 4 z matematyki, waga 2” albo użyj szybkich komend wyżej ↑"
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }}}
                   className="resize-none flex-1" rows={2} />
                 <div className="flex flex-col gap-1.5">
@@ -369,6 +450,38 @@ function AIPage() {
           )}
         </div>
       </div>
+
+      {/* Quick command input modal */}
+      <Dialog open={!!quickCmdOpen} onOpenChange={(v) => { if (!v) { setQuickCmdOpen(null); setQuickCmdInputs({}); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {quickCmdOpen && (() => { const Icon = quickCmdOpen.icon; return <Icon className="w-5 h-5" />; })()}
+              {quickCmdOpen?.label}
+            </DialogTitle>
+          </DialogHeader>
+          {quickCmdOpen && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">{quickCmdOpen.prompt.replace(/\{[^}]+\}/g, "___")}</p>
+              {(quickCmdOpen.needsInput ?? []).map(field => (
+                <div key={field.key}>
+                  <Label className="text-xs">{field.label}</Label>
+                  <Input
+                    value={quickCmdInputs[field.key] ?? ""}
+                    onChange={e => setQuickCmdInputs({ ...quickCmdInputs, [field.key]: e.target.value })}
+                    placeholder={field.placeholder}
+                    onKeyDown={e => { if (e.key === "Enter") submitQuickCmd(); }}
+                    autoFocus
+                  />
+                </div>
+              ))}
+              <Button onClick={submitQuickCmd} className="w-full">
+                <Zap className="w-4 h-4 mr-1" />Wyślij do AI
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

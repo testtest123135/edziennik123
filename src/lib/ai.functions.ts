@@ -6,6 +6,8 @@ const ChatInput = z.object({
   chatId: z.string().uuid(),
   userMessage: z.string().min(1).max(8000),
   imageUrl: z.string().url().optional(),
+  fileText: z.string().max(30000).optional(),
+  fileName: z.string().max(255).optional(),
 });
 
 const SYSTEM_PROMPT = `Jesteś zaawansowanym asystentem AI nauczyciela w polskim e-dzienniku szkolnym. Jesteś ekspertem analityczny — potrafisz analizować dane, wyliczać średnie, prognozować, doradzać. Odpowiadasz po polsku, krótko i konkretnie.
@@ -729,12 +731,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const model = pickModel(provider, settings?.ai_model);
     const ctxText = await buildContext(supabase);
 
-    const userContent: any = data.imageUrl
-      ? [
-          { type: "text", text: data.userMessage },
-          { type: "image_url", image_url: { url: data.imageUrl } },
-        ]
-      : data.userMessage;
+    const userParts: any[] = [{ type: "text", text: data.userMessage }];
+    if (data.fileText) {
+      userParts.push({ type: "text", text: `[Załączony plik: ${data.fileName ?? "dokument"}]\n${data.fileText}` });
+    }
+    if (data.imageUrl) {
+      userParts.push({ type: "image_url", image_url: { url: data.imageUrl } });
+    }
+    const userContent: any = userParts.length === 1 ? userParts[0].text : userParts;
 
     await supabase.from("ai_messages").insert({
       chat_id: data.chatId, role: "user", content: data.userMessage,

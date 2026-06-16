@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Send, Image as ImageIcon, Check, X, Sparkles, GraduationCap, CalendarCheck, Heart, Gavel, BookOpen, MessageSquare, ChartBar as BarChart3, TrendingUp, TriangleAlert as AlertTriangle, Users, Zap } from "lucide-react";
+import { Plus, Trash2, Send, Image as ImageIcon, Check, X, Sparkles, GraduationCap, CalendarCheck, Heart, Gavel, BookOpen, MessageSquare, ChartBar as BarChart3, TrendingUp, TriangleAlert as AlertTriangle, Users, Zap, FileText, Paperclip, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { parseFile, type ParsedFile } from "@/lib/file-parser";
 
 export const Route = createFileRoute("/app/ai")({ component: AIPage });
 
@@ -230,6 +231,8 @@ function AIPage() {
   const [input, setInput] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [sending, setSending] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<ParsedFile | null>(null);
+  const [parsing, setParsing] = useState(false);
   const [done, setDone] = useState<Record<string, "ok" | "rejected">>({});
   const [showSidebar, setShowSidebar] = useState(false);
   const [quickCmdOpen, setQuickCmdOpen] = useState<QuickCmd | null>(null);
@@ -280,16 +283,23 @@ function AIPage() {
   const submit = async () => {
     if (!input.trim() || !activeId || sending) return;
     setSending(true);
-    const msg = input; const img = imageUrl;
-    setInput(""); setImageUrl("");
+    const msg = input; const img = imageUrl; const file = attachedFile;
+    setInput(""); setImageUrl(""); setAttachedFile(null);
     if (typeof window !== "undefined") { localStorage.removeItem(DRAFT_KEY(activeId)); localStorage.removeItem(IMG_KEY(activeId)); }
     try {
-      await send({ data: { chatId: activeId, userMessage: msg, imageUrl: img || undefined } });
+      await send({
+        data: {
+          chatId: activeId, userMessage: msg,
+          imageUrl: img || undefined,
+          fileText: file?.type === "document" ? file.text : undefined,
+          fileName: file?.type === "document" ? file.name : undefined,
+        },
+      });
       qc.invalidateQueries({ queryKey: ["ai_messages", activeId] });
       qc.invalidateQueries({ queryKey: ["ai_chats"] });
     } catch (e: any) {
       toast.error(e.message ?? "Błąd AI");
-      setInput(msg); setImageUrl(img);
+      setInput(msg); setImageUrl(img); setAttachedFile(file);
     } finally { setSending(false); inputRef.current?.focus(); }
   };
 
@@ -332,11 +342,18 @@ function AIPage() {
   const sendPrompt = (prompt: string) => {
     if (!activeId || sending) return;
     setInput(prompt);
-    // Use setTimeout to allow state to update before submit reads it
     setTimeout(async () => {
       setSending(true);
       try {
-        await send({ data: { chatId: activeId!, userMessage: prompt, imageUrl: undefined } });
+        const file = attachedFile;
+        setAttachedFile(null);
+        await send({
+          data: {
+            chatId: activeId!, userMessage: prompt, imageUrl: undefined,
+            fileText: file?.type === "document" ? file.text : undefined,
+            fileName: file?.type === "document" ? file.name : undefined,
+          },
+        });
         qc.invalidateQueries({ queryKey: ["ai_messages", activeId!] });
         qc.invalidateQueries({ queryKey: ["ai_chats"] });
       } catch (e: any) {
@@ -428,22 +445,46 @@ function AIPage() {
                 })}
               </div>
 
-              {imageUrl && <div className="flex items-center gap-2 text-xs"><ImageIcon className="w-3 h-3" /><span className="truncate flex-1">{imageUrl}</span><button onClick={() => setImageUrl("")} className="text-destructive">usuń</button></div>}
+              {(imageUrl || attachedFile) && (
+                <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-md px-2 py-1.5">
+                  {attachedFile?.type === "document" ? <FileText className="w-3.5 h-3.5 shrink-0" /> : <ImageIcon className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="truncate flex-1">{attachedFile?.name ?? imageUrl}</span>
+                  <button onClick={() => { setImageUrl(""); setAttachedFile(null); }} className="text-destructive hover:text-destructive/80"><XIcon className="w-3.5 h-3.5" /></button>
+                </div>
+              )}
+              {parsing && <div className="text-xs text-muted-foreground animate-pulse flex items-center gap-1"><FileText className="w-3 h-3" />Odczytuję plik…</div>}
               <div className="flex gap-2">
-                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość… np. „Dodaj Janowi Kowalskiemu ocenę 4 z matematyki, waga 2” albo użyj szybkich komend wyżej ↑"
+                <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} placeholder="Napisz wiadomość, np. Dodaj Janowi Kowalskiemu ocenę 4 z matematyki, waga 2"
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }}}
                   className="resize-none flex-1" rows={2} />
                 <div className="flex flex-col gap-1.5">
-                  <input type="file" accept="image/*" id="ai-file" className="hidden" onChange={async (e) => {
+                  <input type="file" accept=".pdf,.docx,.doc,.csv,.txt,.xlsx,.xls,.rtf,.odt,.png,.jpg,.jpeg,.gif,.webp,.bmp,.svg" id="ai-file" className="hidden" onChange={async (e) => {
                     const f = e.target.files?.[0]; if (!f) return;
-                    const path = `${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-                    const { error } = await supabase.storage.from("ai-uploads").upload(path, f, { upsert: false });
-                    if (error) { toast.error("Upload nieudany: " + error.message); return; }
-                    const { data } = supabase.storage.from("ai-uploads").getPublicUrl(path);
-                    setImageUrl(data.publicUrl); toast.success("Załączono obraz");
+                    try {
+                      setParsing(true);
+                      const parsed = await parseFile(f);
+                      if (parsed.type === "image") {
+                        const path = `${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+                        const { error } = await supabase.storage.from("ai-uploads").upload(path, f, { upsert: false });
+                        if (error) { toast.error("Upload nieudany: " + error.message); return; }
+                        const { data } = supabase.storage.from("ai-uploads").getPublicUrl(path);
+                        setImageUrl(data.publicUrl);
+                        setAttachedFile(null);
+                        toast.success("Załączono obraz");
+                      } else {
+                        setAttachedFile(parsed);
+                        setImageUrl("");
+                        toast.success(`Załączono: ${f.name} (${parsed.text.length} znaków)`);
+                      }
+                    } catch (err: any) {
+                      toast.error("Błąd odczytu pliku: " + (err.message ?? "nieznany"));
+                    } finally {
+                      setParsing(false);
+                      e.target.value = "";
+                    }
                   }} />
-                  <Button size="icon" variant="outline" title="Załącz plik" onClick={() => document.getElementById("ai-file")?.click()}><ImageIcon className="w-4 h-4" /></Button>
-                  <Button size="icon" onClick={submit} disabled={!input.trim() || sending}><Send className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="outline" title="Załącz plik" onClick={() => document.getElementById("ai-file")?.click()} disabled={parsing}><Paperclip className="w-4 h-4" /></Button>
+                  <Button size="icon" onClick={submit} disabled={(!input.trim() && !attachedFile) || sending || parsing}><Send className="w-4 h-4" /></Button>
                 </div>
               </div>
             </div>

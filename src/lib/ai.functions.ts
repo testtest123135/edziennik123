@@ -681,25 +681,122 @@ async function callLovableAI(body: any) {
   return res.json();
 }
 
-async function callGroq(body: any, apiKey: string) {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+async function callGoogleAI(body: any, apiKey: string) {
+  const model = body.model || "gemini-3.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Convert OpenAI format to Google AI format
+  const contents: any[] = [];
+  let systemInstruction = "";
+
+  for (const msg of body.messages || []) {
+    if (msg.role === "system") {
+      systemInstruction = msg.content;
+    } else if (msg.role === "user") {
+      contents.push({ role: "user", parts: [{ text: msg.content }] });
+    } else if (msg.role === "assistant") {
+      contents.push({ role: "model", parts: [{ text: msg.content }] });
+    } else if (msg.role === "tool") {
+      // Tool results are appended as user messages with the result
+      contents.push({ role: "user", parts: [{ text: msg.content }] });
+    }
+  }
+
+  // Convert tools to Google's format
+  const functionDeclarations = (body.tools || [])
+    .filter((t: any) => t.type === "function")
+    .map((t: any) => ({
+      name: t.function.name,
+      description: t.function.description,
+      parameters: t.function.parameters,
+    }));
+
+  const googleBody: any = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+    },
+  };
+
+  if (systemInstruction) {
+    googleBody.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
+
+  if (functionDeclarations.length > 0) {
+    googleBody.tools = [{ functionDeclarations }];
+  }
+
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(googleBody),
   });
+
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(`Groq error ${res.status}: ${txt.slice(0, 300)}`);
+    throw new Error(`Google AI error ${res.status}: ${txt.slice(0, 300)}`);
   }
-  return res.json();
+
+  const data = await res.json();
+
+  // Convert Google AI response to OpenAI format
+  const candidate = data.candidates?.[0];
+  const content = candidate?.content?.parts?.[0]?.text || "";
+
+  // Handle function calls
+  const functionCall = candidate?.content?.parts?.[0]?.functionCall;
+  let toolCalls: any[] = [];
+
+  if (functionCall) {
+    toolCalls = [{
+      id: `call_${crypto.randomUUID?.() || Date.now()}`,
+      type: "function",
+      function: {
+        name: functionCall.name,
+        arguments: JSON.stringify(functionCall.args || {}),
+      },
+    }];
+  }
+
+  return {
+    choices: [{
+      message: {
+        content,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+      },
+    }],
+  };
 }
 
-const BROKEN_MODELS = ["meta-llama/llama-4-maverick-17b-128e-instruct", "meta-llama/llama-4-scout-17b-16e-instruct"];
+const PROVIDER_MODELS: Record<string, { default: string; options: { v: string; l: string }[] }> = {
+  lovable: {
+    default: "google/gemini-3-flash",
+    options: [
+      { v: "google/gemini-3-flash", l: "Gemini 3 Flash (szybki, Vision)" },
+      { v: "google/gemini-3-flash-lite", l: "Gemini 3 Flash Lite (najszybszy)" },
+      { v: "google/gemini-2.5-pro", l: "Gemini 2.5 Pro (mocny, Vision)" },
+      { v: "openai/gpt-5", l: "GPT-5 (premium)" },
+      { v: "openai/gpt-5-mini", l: "GPT-5 Mini" },
+    ],
+  },
+  google: {
+    default: "gemini-3.5-flash",
+    options: [
+      { v: "gemini-3.5-flash", l: "Gemini 3.5 Flash (zalecany)" },
+      { v: "gemini-3.5-flash-lite", l: "Gemini 3.5 Flash Lite" },
+      { v: "gemini-2.5-flash", l: "Gemini 2.5 Flash" },
+      { v: "gemini-2.5-pro", l: "Gemini 2.5 Pro" },
+      { v: "gemini-2.0-flash", l: "Gemini 2.0 Flash" },
+    ],
+  },
+};
+
 function pickModel(provider: string, raw?: string | null): string {
+  const config = PROVIDER_MODELS[provider];
+  if (!config) return PROVIDER_MODELS.lovable.default;
   const m = (raw ?? "").trim();
-  if (!m || BROKEN_MODELS.includes(m) || m.includes("llama-4")) {
-    return provider === "groq" ? "llama-3.3-70b-versatile" : "google/gemini-3-flash-preview";
-  }
+  if (!m || m.startsWith("meta-llama") || m.includes("llama-4") || m.startsWith("llama-")) return config.default;
   return m;
 }
 
@@ -768,10 +865,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const READ_TOOL_NAMES = new Set(READ_TOOLS.map(t => t.function.name));
 
     const callAI = (b: any) => {
-      if (provider === "groq") {
-        const groqKey = process.env.AI || process.env.GROQ_API_KEY;
-        if (!groqKey) throw new Error("Brak klucza Groq w sekretach (oczekiwana nazwa: AI).");
-        return callGroq(b, groqKey);
+      if (provider === "google") {
+        const googleKey = process.env.GOOGLE_AI_KEY || process.env.AI;
+        if (!googleKey) throw new Error("Brak klucza Google AI w sekretach (oczekiwana nazwa: GOOGLE_AI_KEY lub AI).");
+        return callGoogleAI(b, googleKey);
       }
       return callLovableAI(b);
     };

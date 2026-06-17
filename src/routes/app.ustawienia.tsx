@@ -15,12 +15,20 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/ustawienia")({ component: SettingsPage });
 
-const AI_MODELS = [
-  { v: "google/gemini-2.5-flash", l: "Gemini 2.5 Flash (szybki, Vision)" },
+const LOVABLE_MODELS = [
+  { v: "google/gemini-3-flash", l: "Gemini 3 Flash (szybki, Vision)" },
+  { v: "google/gemini-3-flash-lite", l: "Gemini 3 Flash Lite (najszybszy)" },
   { v: "google/gemini-2.5-pro", l: "Gemini 2.5 Pro (mocny, Vision)" },
-  { v: "google/gemini-2.5-flash-lite", l: "Gemini 2.5 Flash Lite (najszybszy)" },
   { v: "openai/gpt-5", l: "GPT-5 (premium)" },
   { v: "openai/gpt-5-mini", l: "GPT-5 Mini" },
+];
+
+const GOOGLE_MODELS = [
+  { v: "gemini-3.5-flash", l: "Gemini 3.5 Flash (zalecany)" },
+  { v: "gemini-3.5-flash-lite", l: "Gemini 3.5 Flash Lite" },
+  { v: "gemini-2.5-flash", l: "Gemini 2.5 Flash" },
+  { v: "gemini-2.5-pro", l: "Gemini 2.5 Pro" },
+  { v: "gemini-2.0-flash", l: "Gemini 2.0 Flash" },
 ];
 
 function SettingsPage() {
@@ -61,7 +69,7 @@ function SettingsPage() {
 
         <Card className="p-6">
           <h3 className="font-semibold mb-1">Sztuczna inteligencja</h3>
-          <p className="text-sm text-muted-foreground mb-4">Lovable AI działa od razu (bez konfiguracji). Możesz też podłączyć Groq (darmowy, szybki).</p>
+          <p className="text-sm text-muted-foreground mb-4">Lovable AI działa od razu (bez konfiguracji). Możesz też podłączyć Google AI Studio (Gemini).</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Dostawca AI</Label>
@@ -69,25 +77,28 @@ function SettingsPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="lovable">Lovable AI (domyślny)</SelectItem>
-                  <SelectItem value="groq">Groq API</SelectItem>
+                  <SelectItem value="google">Google AI Studio</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Model AI</Label>
-              {settings.ai_provider === "groq" ? (
-                <Input defaultValue={settings.ai_model} onBlur={e => updateSettings.mutate({ ai_model: e.target.value })} placeholder="np. llama-3.3-70b-versatile" />
+              {settings.ai_provider === "google" ? (
+                <Select value={settings.ai_model || "gemini-3.5-flash"} onValueChange={(v) => updateSettings.mutate({ ai_model: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{GOOGLE_MODELS.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
+                </Select>
               ) : (
                 <Select value={settings.ai_model} onValueChange={(v) => updateSettings.mutate({ ai_model: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AI_MODELS.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
+                  <SelectContent>{LOVABLE_MODELS.map(m => <SelectItem key={m.v} value={m.v}>{m.l}</SelectItem>)}</SelectContent>
                 </Select>
               )}
             </div>
             <div className="flex items-center gap-3"><Switch checked={settings.ai_vision_enabled ?? true} onCheckedChange={(v) => updateSettings.mutate({ ai_vision_enabled: v })} /><Label>Vision (analiza obrazu)</Label></div>
           </div>
-          {settings.ai_provider === "groq" && (
-            <p className="text-xs text-muted-foreground mt-3">Klucz API z sekretu <code>AI</code> w Lovable Cloud. Polecane: <code>llama-3.3-70b-versatile</code> (tekst), <code>meta-llama/llama-4-scout-17b-16e-instruct</code> (Vision — może wymagać dostępu).</p>
+          {settings.ai_provider === "google" && (
+            <p className="text-xs text-muted-foreground mt-3">Klucz API z sekretu <code>GOOGLE_AI_KEY</code> lub <code>AI</code> w Lovable Cloud. Polecane: <code>gemini-3.5-flash</code> (bardzo szybki).</p>
           )}
 
           <div className="border-t pt-4 mt-4">

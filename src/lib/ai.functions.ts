@@ -826,6 +826,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { data: settings } = await supabase.from("app_settings").select("*").eq("id", 1).single();
     const provider = settings?.ai_provider ?? "lovable";
     const model = pickModel(provider, settings?.ai_model);
+    const googleApiKey = settings?.google_ai_key || process.env.GOOGLE_AI_KEY || process.env.AI;
     const ctxText = await buildContext(supabase);
 
     const userParts: any[] = [{ type: "text", text: data.userMessage }];
@@ -866,9 +867,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const callAI = (b: any) => {
       if (provider === "google") {
-        const googleKey = process.env.GOOGLE_AI_KEY || process.env.AI;
-        if (!googleKey) throw new Error("Brak klucza Google AI w sekretach (oczekiwana nazwa: GOOGLE_AI_KEY lub AI).");
-        return callGoogleAI(b, googleKey);
+        if (!googleApiKey) throw new Error("Brak klucza Google AI. Dodaj klucz w Ustawieniach lub skonfiguruj sekret GOOGLE_AI_KEY.");
+        return callGoogleAI(b, googleApiKey);
       }
       return callLovableAI(b);
     };

@@ -98,7 +98,18 @@ function SettingsPage() {
             <div className="flex items-center gap-3"><Switch checked={settings.ai_vision_enabled ?? true} onCheckedChange={(v) => updateSettings.mutate({ ai_vision_enabled: v })} /><Label>Vision (analiza obrazu)</Label></div>
           </div>
           {settings.ai_provider === "google" && (
-            <p className="text-xs text-muted-foreground mt-3">Klucz API z sekretu <code>GOOGLE_AI_KEY</code> lub <code>AI</code> w Lovable Cloud. Polecane: <code>gemini-3.5-flash</code> (bardzo szybki).</p>
+            <div className="mt-3 space-y-2">
+              <div>
+                <Label>Klucz API Google AI Studio</Label>
+                <Input
+                  type="password"
+                  placeholder="Wpisz klucz API..."
+                  defaultValue={settings.google_ai_key ?? ""}
+                  onBlur={e => updateSettings.mutate({ google_ai_key: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Pobierz klucz z <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="underline">Google AI Studio</a>. Polecane: <code>gemini-3.5-flash</code>.</p>
+            </div>
           )}
 
           <div className="border-t pt-4 mt-4">
